@@ -249,7 +249,10 @@ function getImportTypeAliasNameFromImportElements(importElementEntity: ImportEle
         if (!element) {
           continue;
         }
-        if (`_${typeName}` === element.split('as')[1].trim()) {
+        if (`_${typeName}` === element.trim()) {
+          return `_${typeName}`;
+        }
+        if (element.includes(' as ') && `_${typeName}` === element.split('as')[1].trim()) {
           return `_${typeName}`;
         }
       }
