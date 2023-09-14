@@ -39,9 +39,11 @@ import { generateVariableStatementDelcatation } from './generateVariableStatemen
  * @param moduleEntity
  * @param sourceFile
  * @param filename
+ * @param extraImport
  * @returns
  */
-export function generateModuleDeclaration(rootName: string, moduleEntity: ModuleBlockEntity, sourceFile: SourceFile, filename: string, mockApi: string): string {
+export function generateModuleDeclaration(rootName: string, moduleEntity: ModuleBlockEntity, sourceFile: SourceFile,
+  filename: string, mockApi: string, extraImport: string[]): string {
   let moduleName = moduleEntity.moduleName.replace(/["']/g, '');
   let moduleBody = `export function mock${firstCharacterToUppercase(moduleName)}() {\n`;
   if (!(moduleEntity.exportModifiers.includes(SyntaxKind.DeclareKeyword) &&
@@ -82,7 +84,7 @@ export function generateModuleDeclaration(rootName: string, moduleEntity: Module
 
   if (moduleEntity.typeAliasDeclarations.length > 0) {
     moduleEntity.typeAliasDeclarations.forEach(value => {
-      outBody += generateTypeAliasDeclaration(value, true) + '\n';
+      outBody += generateTypeAliasDeclaration(value, true, sourceFile, extraImport) + '\n';
     });
   }
 
@@ -178,7 +180,6 @@ export function generateModuleDeclaration(rootName: string, moduleEntity: Module
 /**
  * generate inner module for declare module
  * @param moduleEntity
- * @param sourceFile
  * @returns
  */
 function generateInnerDeclareModule(moduleEntity: ModuleBlockEntity): string {
@@ -196,9 +197,10 @@ function generateInnerDeclareModule(moduleEntity: ModuleBlockEntity): string {
  * generate inner module
  * @param moduleEntity
  * @param sourceFile
+ * @param extraImport
  * @returns
  */
-function generateInnerModule(moduleEntity: ModuleBlockEntity, sourceFile: SourceFile): string {
+function generateInnerModule(moduleEntity: ModuleBlockEntity, sourceFile: SourceFile, extraImport: string[]): string {
   const moduleName = moduleEntity.moduleName;
   let innerModuleBody = `const ${moduleName} = (()=> {`;
 
@@ -210,7 +212,7 @@ function generateInnerModule(moduleEntity: ModuleBlockEntity, sourceFile: Source
 
   if (moduleEntity.typeAliasDeclarations.length > 0) {
     moduleEntity.typeAliasDeclarations.forEach(value => {
-      innerModuleBody += generateTypeAliasDeclaration(value, true) + '\n';
+      innerModuleBody += generateTypeAliasDeclaration(value, true, sourceFile, extraImport) + '\n';
     });
   }
 

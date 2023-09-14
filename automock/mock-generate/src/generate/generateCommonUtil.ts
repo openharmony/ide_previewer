@@ -261,7 +261,7 @@ function getImportTypeAliasNameFromImportElements(importElementEntity: ImportEle
   if (typeName === 'Want') {
     typeName = 'mockWant().Want';
   } else if (typeName === 'InputMethodExtensionContext') {
-    typeName = 'mockInputmethodextensioncontext().InputMethodExtensionContext';
+    typeName = 'mockInputMethodExtensionContext().InputMethodExtensionContext';
   }
   return typeName;
 }

@@ -29,6 +29,7 @@ import { generateModuleDeclaration } from './generateModuleDeclaration';
 import { generateStaticFunction } from './generateStaticFunction';
 import { addToSystemIndexArray } from './generateSystemIndex';
 import { generateTypeAliasDeclaration } from './generateTypeAlias';
+import { generateExportFunction } from './generateExportFunction';
 
 /**
  * generate mock file string
@@ -54,7 +55,7 @@ export function generateSourceFileElements(rootName: string, sourceFileEntity: S
 
   if (sourceFileEntity.moduleDeclarations.length > 0) {
     sourceFileEntity.moduleDeclarations.forEach(value => {
-      mockApi += generateModuleDeclaration('', value, sourceFile, fileName, mockApi) + '\n';
+      mockApi += generateModuleDeclaration('', value, sourceFile, fileName, mockApi, extraImport) + '\n';
     });
   }
 
@@ -84,8 +85,14 @@ export function generateSourceFileElements(rootName: string, sourceFileEntity: S
 
   if (sourceFileEntity.typeAliasDeclarations.length > 0) {
     sourceFileEntity.typeAliasDeclarations.forEach(value => {
-      mockApi += generateTypeAliasDeclaration(value, false) + '\n';
+      mockApi += generateTypeAliasDeclaration(value, false, sourceFile, extraImport) + '\n';
       mockFunctionElements.push({ elementName: value.typeAliasName, type: 'typeAlias' });
+    });
+  }
+
+  if (sourceFileEntity.functionDeclarations.length > 0) {
+    sourceFileEntity.functionDeclarations.forEach(value => {
+      mockApi += generateExportFunction(value, sourceFile, mockApi) + '\n';
     });
   }
 
@@ -157,6 +164,9 @@ export function generateSourceFileElements(rootName: string, sourceFileEntity: S
  * generate import definition
  * @param importEntity
  * @param sourceFileName
+ * @param heritageClausesArray
+ * @param currentFilePath
+ * @param dependsSourceFileList
  * @returns
  */
 export function generateImportDeclaration(

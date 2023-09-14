@@ -53,6 +53,7 @@ export function getSourceFileAssembly(sourceFile: SourceFile, fileName: string):
   let exportAssignment: Array<string> = [];
   const staticMethods: Array<Array<StaticMethodEntity>> = [];
   const exportDeclarations: Array<string> = [];
+  const functionDeclarations: Array<FunctionEntity> = [];
 
   sourceFile.forEachChild(node => {
     if (isImportDeclaration(node)) {
@@ -85,7 +86,10 @@ export function getSourceFileAssembly(sourceFile: SourceFile, fileName: string):
       enumDeclarations.push(getEnumDeclaration(node, sourceFile));
     } else if (isExportDeclaration(node)) {
       exportDeclarations.push(sourceFile.text.substring(node.pos, node.end).trimStart().trimEnd());
-    } else {
+    } else if (isFunctionDeclaration(node)){
+      functionDeclarations.push(getFunctionDeclaration(node, sourceFile));
+    }
+    else {
       if (node.kind !== SyntaxKind.EndOfFileToken && !isFunctionDeclaration(node) && !isVariableStatement(node)) {
         console.log('--------------------------- uncaught sourceFile type start -----------------------');
         console.log('fileName: ' + fileName);
@@ -104,7 +108,8 @@ export function getSourceFileAssembly(sourceFile: SourceFile, fileName: string):
     enumDeclarations: enumDeclarations,
     exportAssignment: exportAssignment,
     staticMethods: staticMethods,
-    exportDeclarations: exportDeclarations
+    exportDeclarations: exportDeclarations,
+    functionDeclarations: functionDeclarations,
   };
 }
 
@@ -169,5 +174,6 @@ export interface SourceFileEntity {
   enumDeclarations: Array<EnumEntity>,
   exportAssignment: Array<string>,
   staticMethods: Array<Array<StaticMethodEntity>>,
-  exportDeclarations: Array<string>
+  exportDeclarations: Array<string>,
+  functionDeclarations: Array<FunctionEntity>
 }
