@@ -27,6 +27,9 @@ import { getCallbackStatement, getReturnStatement } from './generateCommonUtil';
  * @returns
  */
 export function generateExportFunction(functionEntity: FunctionEntity, sourceFile: SourceFile, mockApi: string): string {
+  if (functionEntity.functionName !== 'getContext') {
+    return '';
+  }
   let functionBody = '';
   functionBody = `global.${functionEntity.functionName} = function (...args) {`;
   functionBody += `console.warn('The ${functionEntity.functionName} interface in the Previewer is a mocked implementation and may behave differently than on a real device.');\n`;
