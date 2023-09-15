@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
-import { SourceFile, SyntaxKind } from 'typescript';
+import type { SourceFile } from 'typescript';
+import { SyntaxKind } from 'typescript';
 import { firstCharacterToUppercase } from '../common/commonUtils';
-import { ClassEntity } from '../declaration-node/classDeclaration';
+import type { ClassEntity } from '../declaration-node/classDeclaration';
 import { generateCommonMethod } from './generateCommonMethod';
 import { getWarnConsole } from './generateCommonUtil';
 import { generatePropertyDeclaration } from './generatePropertyDeclaration';
@@ -33,14 +34,16 @@ import { generateStaticFunction } from './generateStaticFunction';
  * @returns
  */
 export function generateClassDeclaration(rootName: string, classEntity: ClassEntity, isSystem: boolean, globalName: string,
-  filename: string, sourceFile: SourceFile, isInnerMockFunction: boolean): string {
+  filename: string, sourceFile: SourceFile, isInnerMockFunction: boolean, mockApi: string): string {
   if (isSystem) {
     return '';
   }
 
   const className = firstCharacterToUppercase(classEntity.className);
   let classBody = '';
-  if (classEntity.exportModifiers.includes(SyntaxKind.ExportKeyword) && !isInnerMockFunction) {
+  if ((classEntity.exportModifiers.includes(SyntaxKind.ExportKeyword) ||
+    classEntity.exportModifiers.includes(SyntaxKind.DeclareKeyword)) &&
+    !isInnerMockFunction) {
     classBody += `export const ${className} = class ${className} `;
   } else {
     classBody += `const ${className} = class ${className} `;
@@ -54,6 +57,7 @@ export function generateClassDeclaration(rootName: string, classEntity: ClassEnt
         isExtend = true;
         classBody += `${value.clauseToken} `;
         value.types.forEach((val, index) => {
+          const extendClassName = val.split('<')[0];
           const moduleName = firstCharacterToUppercase(rootName);
           if (val.startsWith('Array<')) {
             val = 'Array';
@@ -63,9 +67,9 @@ export function generateClassDeclaration(rootName: string, classEntity: ClassEnt
             }
           }
           if (index !== value.types.length - 1) {
-            classBody += `${val},`;
+            classBody += `${extendClassName},`;
           } else {
-            classBody += `${val}`;
+            classBody += `${extendClassName}`;
           }
         });
       }
@@ -75,12 +79,12 @@ export function generateClassDeclaration(rootName: string, classEntity: ClassEnt
   if (!isSystem) {
     classBody += '{';
     if (classEntity.classConstructor.length > 1) {
-      classBody += `constructor(...arg) { `;
+      classBody += 'constructor(...arg) { ';
     } else {
-      classBody += `constructor() { `;
+      classBody += 'constructor() { ';
     }
     if (isExtend) {
-      classBody += `super();`;
+      classBody += 'super();\n';
     }
     classBody += getWarnConsole(className, 'constructor');
   }
@@ -92,7 +96,7 @@ export function generateClassDeclaration(rootName: string, classEntity: ClassEnt
 
   if (classEntity.classMethod.size > 0) {
     classEntity.classMethod.forEach(value => {
-      classBody += generateCommonMethod(className, value, sourceFile);
+      classBody += generateCommonMethod(className, value, sourceFile, mockApi);
     });
   }
 
@@ -101,7 +105,7 @@ export function generateClassDeclaration(rootName: string, classEntity: ClassEnt
     if (classEntity.staticMethods.length > 0) {
       let staticMethodBody = '';
       classEntity.staticMethods.forEach(value => {
-        staticMethodBody += generateStaticFunction(value, false, sourceFile) + '\n';
+        staticMethodBody += generateStaticFunction(value, false, sourceFile, mockApi) + '\n';
       });
       classBody += staticMethodBody;
     }

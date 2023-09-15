@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
-import { SourceFile, SyntaxKind } from 'typescript';
+import { SyntaxKind } from 'typescript';
+import type { SourceFile } from 'typescript';
 import { firstCharacterToUppercase } from '../common/commonUtils';
-import { StaticMethodEntity } from '../declaration-node/methodDeclaration';
+import type { StaticMethodEntity } from '../declaration-node/methodDeclaration';
 import { generateSymbolIterator, getCallbackStatement, getReturnStatement, getWarnConsole } from './generateCommonUtil';
 
 /**
@@ -25,7 +26,7 @@ import { generateSymbolIterator, getCallbackStatement, getReturnStatement, getWa
  * @param sourceFile
  * @returns
  */
-export function generateStaticFunction(staticMethod: StaticMethodEntity, isSystem: boolean, sourceFile: SourceFile): string {
+export function generateStaticFunction(staticMethod: StaticMethodEntity, isSystem: boolean, sourceFile: SourceFile, mockApi: string): string {
   let methodBody = '';
   const rootName = staticMethod.className;
   const methodEntity = staticMethod.methodEntity;
@@ -45,7 +46,7 @@ export function generateStaticFunction(staticMethod: StaticMethodEntity, isSyste
   const args = methodEntity.args;
   const len = args.length;
   if (args.length > 0 && args[len - 1].paramName === 'callback') {
-    methodBody += getCallbackStatement();
+    methodBody += getCallbackStatement(mockApi, args[len - 1]?.paramTypeString);
   }
 
   if (methodEntity.returnType.returnKind !== SyntaxKind.VoidKeyword) {

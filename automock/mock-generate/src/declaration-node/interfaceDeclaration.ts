@@ -14,18 +14,25 @@
  */
 
 import {
-  InterfaceDeclaration, isCallSignatureDeclaration, isConstructSignatureDeclaration,
-  isHeritageClause, isIndexSignatureDeclaration, isMethodSignature, isPropertySignature,
-  isTypeParameterDeclaration, SourceFile
+  isCallSignatureDeclaration, isConstructSignatureDeclaration, isHeritageClause, isIndexSignatureDeclaration,
+  isMethodSignature, isPropertySignature, isTypeParameterDeclaration
 } from 'typescript';
+import type { InterfaceDeclaration, SourceFile } from 'typescript';
 import { getExportKeyword } from '../common/commonUtils';
-import { CallSignatureEntity, getCallSignatureDeclaration } from './callSignatureDeclaration';
-import { ConstructorEntity, getConstructorDeclaration } from './constructorDeclaration';
-import { getHeritageClauseDeclaration, HeritageClauseEntity } from './heritageClauseDeclaration';
-import { getIndexSignatureDeclaration, IndexSignatureEntity } from './indexSignatureDeclaration';
-import { getMethodSignatureDeclaration, MethodSignatureEntity } from './methodSignatureDeclaration';
-import { getPropertySignatureDeclaration, PropertySignatureEntity } from './propertySignatureDeclaration';
-import { getTypeParameterDeclaration, TypeParameterEntity } from './typeParameterDeclaration';
+import { getCallSignatureDeclaration } from './callSignatureDeclaration';
+import type { CallSignatureEntity } from './callSignatureDeclaration';
+import { getConstructorDeclaration } from './constructorDeclaration';
+import type { ConstructorEntity } from './constructorDeclaration';
+import { getHeritageClauseDeclaration } from './heritageClauseDeclaration';
+import type { HeritageClauseEntity } from './heritageClauseDeclaration';
+import { getIndexSignatureDeclaration } from './indexSignatureDeclaration';
+import type { IndexSignatureEntity } from './indexSignatureDeclaration';
+import { getMethodSignatureDeclaration } from './methodSignatureDeclaration';
+import type { MethodSignatureEntity } from './methodSignatureDeclaration';
+import { getPropertySignatureDeclaration } from './propertySignatureDeclaration';
+import type { PropertySignatureEntity } from './propertySignatureDeclaration';
+import { getTypeParameterDeclaration } from './typeParameterDeclaration';
+import type { TypeParameterEntity } from './typeParameterDeclaration';
 
 /**
  * get interface info

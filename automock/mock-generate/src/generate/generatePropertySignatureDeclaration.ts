@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-import { SourceFile, SyntaxKind } from 'typescript';
-import { PropertySignatureEntity } from '../declaration-node/propertySignatureDeclaration';
+import { SyntaxKind } from 'typescript';
+import type { SourceFile } from 'typescript';
+import type { PropertySignatureEntity } from '../declaration-node/propertySignatureDeclaration';
 import {
   checkIsGenericSymbol, getCallbackStatement, getTheRealReferenceFromImport,
   getWarnConsole, propertyTypeWhiteList
@@ -27,12 +28,12 @@ import {
  * @param sourceFile
  * @returns
  */
-export function generatePropertySignatureDeclaration(rootName: string, propertySignature: PropertySignatureEntity, sourceFile: SourceFile): string {
+export function generatePropertySignatureDeclaration(rootName: string, propertySignature: PropertySignatureEntity, sourceFile: SourceFile, mockApi: string): string {
   let propertySignatureBody = '';
   if (propertySignature.kind === SyntaxKind.FunctionType) {
     propertySignatureBody += `${propertySignature.propertyName}: function(...args) {`;
     propertySignatureBody += getWarnConsole(rootName, propertySignature.propertyName);
-    propertySignatureBody += getCallbackStatement();
+    propertySignatureBody += getCallbackStatement(mockApi);
     propertySignatureBody += '},\n';
   } else {
     if (propertySignature.propertyTypeName.startsWith('{')) {
@@ -69,7 +70,10 @@ export function generatePropertySignatureDeclaration(rootName: string, propertyS
     } else if (propertySignature.kind === SyntaxKind.BooleanKeyword) {
       propertySignatureBody = `${propertySignature.propertyName}: true,`;
     } else if (propertySignature.kind === SyntaxKind.UnionType) {
-      const unionFirstElement = propertySignature.propertyTypeName.split('|')[0].trimStart().trimEnd();
+      let unionFirstElement = propertySignature.propertyTypeName.split('|')[0].trimStart().trimEnd();
+      if (unionFirstElement.includes('[]')) {
+        unionFirstElement = '[]';
+      }
       if (unionFirstElement.startsWith('"') || unionFirstElement.startsWith("'")) {
         propertySignatureBody = `${propertySignature.propertyName}: ${unionFirstElement},`;
       } else if (unionFirstElement === 'string') {
@@ -85,7 +89,7 @@ export function generatePropertySignatureDeclaration(rootName: string, propertyS
         if (element === 'HTMLCanvasElement') {
           element = `'[PC Preview] unknown ${propertySignature.propertyName}'`;
         } else if (element === 'WebGLActiveInfo') {
-          element = `{size: '[PC Preview] unknown GLint', type: 0, name: '[PC Preview] unknown name'}`;
+          element = '{size: \'[PC Preview] unknown GLint\', type: 0, name: \'[PC Preview] unknown name\'}';
         } else if (element.startsWith('Array')) {
           element = '[]';
         } else if (propertyTypeWhiteList(unionFirstElement) === unionFirstElement) {

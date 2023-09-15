@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { EnumDeclaration, SourceFile } from 'typescript';
+import type { EnumDeclaration, SourceFile } from 'typescript';
 import { getExportKeyword, getPropertyName } from '../common/commonUtils';
 
 /**

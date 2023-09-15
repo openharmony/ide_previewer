@@ -15,7 +15,7 @@
 
 import { SyntaxKind } from 'typescript';
 import { getClassNameSet } from '../common/commonUtils';
-import { StatementEntity } from '../declaration-node/variableStatementResolve';
+import type { StatementEntity } from '../declaration-node/variableStatementResolve';
 
 /**
  * generate const variable statement
@@ -23,7 +23,7 @@ import { StatementEntity } from '../declaration-node/variableStatementResolve';
  * @returns
  */
 export function generateVariableStatementDelcatation(statementEntity: StatementEntity, isInnerModule: boolean): string {
-  let statementBody = ``;
+  let statementBody = '';
   if (isInnerModule) {
     statementBody = `const ${statementEntity.statementName} = `;
   } else {
@@ -31,7 +31,7 @@ export function generateVariableStatementDelcatation(statementEntity: StatementE
   }
   let statementValue;
   if (statementEntity.typeKind === SyntaxKind.StringKeyword) {
-    statementValue = `''`;
+    statementValue = '\'\'';
   } else if (statementEntity.typeKind === SyntaxKind.LiteralType || statementEntity.typeKind === SyntaxKind.StringLiteral ||
     statementEntity.typeKind === SyntaxKind.NumericLiteral) {
     if (statementEntity.initializer === '') {

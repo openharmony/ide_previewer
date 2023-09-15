@@ -13,11 +13,9 @@
  * limitations under the License.
  */
 
-import { MethodSignature, Node, SourceFile } from 'typescript';
-import {
-  getFunctionAndMethodReturnInfo, getParameter, getPropertyName,
-  ParameterEntity, ReturnTypeEntity
-} from '../common/commonUtils';
+import type { MethodSignature, Node, SourceFile } from 'typescript';
+import { getFunctionAndMethodReturnInfo, getParameter, getPropertyName } from '../common/commonUtils';
+import type { ParameterEntity, ReturnTypeEntity } from '../common/commonUtils';
 
 /**
  * get interface signature info

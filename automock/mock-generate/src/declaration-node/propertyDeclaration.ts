@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { PropertyDeclaration, SourceFile } from 'typescript';
+import type { PropertyDeclaration, SourceFile } from 'typescript';
 import { getPropertyName } from '../common/commonUtils';
 
 /**

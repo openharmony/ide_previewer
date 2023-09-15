@@ -13,10 +13,13 @@
  * limitations under the License.
  */
 
-import { SourceFile, SyntaxKind } from 'typescript';
-import { firstCharacterToUppercase, getClassNameSet, ReturnTypeEntity } from '../common/commonUtils';
-import { getImportDeclarationArray, ImportElementEntity } from '../declaration-node/importAndExportDeclaration';
-import { MethodEntity } from '../declaration-node/methodDeclaration';
+import type { SourceFile } from 'typescript';
+import { SyntaxKind } from 'typescript';
+import { firstCharacterToUppercase, getClassNameSet } from '../common/commonUtils';
+import type { ReturnTypeEntity } from '../common/commonUtils';
+import { getImportDeclarationArray } from '../declaration-node/importAndExportDeclaration';
+import type { ImportElementEntity } from '../declaration-node/importAndExportDeclaration';
+import type { MethodEntity } from '../declaration-node/methodDeclaration';
 
 /**
  * get warn console template
@@ -41,7 +44,7 @@ export function getReturnStatement(returnType: ReturnTypeEntity, sourceFile: Sou
         resolve('[PC Preview] unknown type');
       })`;
     } else if (returnType.returnKindName === 'T') {
-      return `return '[PC Preview] unknown type'`;
+      return 'return \'[PC Preview] unknown type\'';
     } else if (returnType.returnKindName === 'String') {
       return `return ${returnType.returnKindName}(...args)`;
     } else if (returnType.returnKindName === 'ArrayBuffer') {
@@ -107,7 +110,7 @@ export function getReturnStatement(returnType: ReturnTypeEntity, sourceFile: Sou
     } else if (returnType.returnKindName.includes('<T>')) {
       const tmpReturn = returnType.returnKindName.split('<')[0];
       if (tmpReturn.startsWith('Array')) {
-        return `return []`;
+        return 'return []';
       } else {
         `return new ${tmpReturn}()`;
       }
@@ -116,7 +119,7 @@ export function getReturnStatement(returnType: ReturnTypeEntity, sourceFile: Sou
     } else {
       if (getClassNameSet().has(returnType.returnKindName)) {
         if (returnType.returnKindName === 'Want') {
-          return `return mockWant().Want`;
+          return 'return mockWant().Want';
         } else {
           return `return new ${returnType.returnKindName}()`;
         }
@@ -136,7 +139,7 @@ export function getReturnStatement(returnType: ReturnTypeEntity, sourceFile: Sou
       }
     }
     if (returnName.trimStart().trimEnd() === 'void') {
-      return ``;
+      return '';
     }
     if (getClassNameSet().has(returnName)) {
       return `return new ${returnName}()`;
@@ -144,9 +147,9 @@ export function getReturnStatement(returnType: ReturnTypeEntity, sourceFile: Sou
       return `return ${getBaseReturnValue(returnName.trimStart().trimEnd())}`;
     }
   } else {
-    return `return '[PC Preview] unknown type'`;
+    return 'return \'[PC Preview] unknown type\'';
   }
-  return `return '[PC Preview] unknown type'`;
+  return 'return \'[PC Preview] unknown type\'';
 }
 
 /**
@@ -154,7 +157,7 @@ export function getReturnStatement(returnType: ReturnTypeEntity, sourceFile: Sou
  * @param propertyTypeName
  * @returns
  */
-export function propertyTypeWhiteList(propertyTypeName: string): any {
+export function propertyTypeWhiteList(propertyTypeName: string): boolean | number | string {
   const whiteList = ['GLboolean', 'GLuint', 'GLenum', 'GLint', 'NotificationFlags'];
   if (whiteList.includes(propertyTypeName)) {
     if (propertyTypeName === 'NotificationFlags' || propertyTypeName === 'GLenum') {
@@ -176,17 +179,17 @@ export function propertyTypeWhiteList(propertyTypeName: string): any {
  */
 export function getBaseReturnValue(value: string): string | number | boolean {
   if (value === 'string') {
-    return `''`;
+    return '\'\'';
   } else if (value === 'number') {
     return 0;
   } else if (value === 'boolean') {
     return true;
   } else if (value === 'Object' || value === 'object') {
-    return `{}`;
+    return '{}';
   } else if (checkIsGenericSymbol(value)) {
-    return `'[PC Preview] unknown type'`;
+    return '\'[PC Preview] unknown type\'';
   } else if (value === 'WebGLActiveInfo') {
-    return `{size: '[PC Preview] unknown GLint', type: 0, name: '[PC Preview] unknown name'}`;
+    return '{size: \'[PC Preview] unknown GLint\', type: 0, name: \'[PC Preview] unknown name\'}';
   } else {
     return value;
   }
@@ -228,7 +231,7 @@ export function getTheRealReferenceFromImport(sourceFile: SourceFile, typeName: 
   } else {
     returnName = getImportTypeAliasNameFromImportElements(importArray, typeName);
   }
-  return returnName;
+  return returnName.split('<')[0];
 }
 
 /**
@@ -237,7 +240,7 @@ export function getTheRealReferenceFromImport(sourceFile: SourceFile, typeName: 
  * @param typeName
  * @returns
  */
- function getImportTypeAliasNameFromImportElements(importElementEntity: ImportElementEntity[], typeName: string): string {
+function getImportTypeAliasNameFromImportElements(importElementEntity: ImportElementEntity[], typeName: string): string {
   for (let i = 0; i < importElementEntity.length; i++) {
     if (importElementEntity[i].importElements.includes('_')) {
       const importElements = importElementEntity[i].importElements.replace('{', '').replace('}', '').split(',');
@@ -256,9 +259,9 @@ export function getTheRealReferenceFromImport(sourceFile: SourceFile, typeName: 
     }
   }
   if (typeName === 'Want') {
-    typeName = `mockWant().Want`;
+    typeName = 'mockWant().Want';
   } else if (typeName === 'InputMethodExtensionContext') {
-    typeName = `mockInputmethodextensioncontext().InputMethodExtensionContext`;
+    typeName = 'mockInputMethodExtensionContext().InputMethodExtensionContext';
   }
   return typeName;
 }
@@ -278,10 +281,10 @@ export function checkIsGenericSymbol(type: string): boolean {
  * @param kindName
  * @returns
  */
-export function generateGenericTypeToMockValue(kindName: string): any {
+export function generateGenericTypeToMockValue(kindName: string): string | number | boolean {
   const genericTypeName = kindName.split('<')[1].split('>')[0];
   if (genericTypeName === 'string') {
-    return `''`;
+    return '\'\'';
   } else if (genericTypeName === 'number') {
     return 0;
   } else if (genericTypeName === 'boolean') {
@@ -289,19 +292,116 @@ export function generateGenericTypeToMockValue(kindName: string): any {
   } else if (genericTypeName === 'Object' || genericTypeName === 'object') {
     return '{}';
   } else {
-    return ``;
+    return '';
   }
 }
 
+const paramsTypeStart = {
+  'void': '[PC Preview] unknown type',
+  'Array': '[]',
+  'Object': '{}',
+  '{': '{}',
+  'string': '',
+  'number': 0,
+  'boolean': false
+};
+
+const removeCallback = (str: string) => {
+  const callbackParams = {
+    type: 'Callback',
+    value: ''
+  };
+  if (str.startsWith('Callback')) {
+    const reg = /callback<(.*?)>/;
+    const matchValue = str.match(reg);
+    callbackParams.value = matchValue ? matchValue[1] : '';
+    callbackParams.type = 'Callback';
+  } else if (str.startsWith('AsyncCallback')) {
+    const reg = /AsyncCallback<(.*?)>/;
+    const matchValue = str.match(reg);
+    callbackParams.value = matchValue ? matchValue[1] : '';
+    callbackParams.type = 'AsyncCallback';
+  }
+  return callbackParams;
+};
+
+const isInImportType = (mockApi: string, value: string) => {
+  let hasDotFirstWorld = '';
+  if (value.includes('.')) {
+    hasDotFirstWorld = value.split('.')[0];
+  }
+  if (hasDotFirstWorld && mockApi.includes(`import { mock${firstLetterWord(hasDotFirstWorld)} `)) {
+    return 'isHasDotImportMock';
+  }
+  if (hasDotFirstWorld && mockApi.includes(`import { ${firstLetterWord(hasDotFirstWorld)} `)) {
+    return 'isNoHasDotImportMock';
+  }
+  if (mockApi.includes(`import { mock${firstLetterWord(value)} `)) {
+    return 'isImportMock';
+  }
+  if (mockApi.includes(`import { ${value} `)) {
+    return 'isImport';
+  }
+  return 'noImport';
+};
+
+const firstLetterWord = (word: string) => {
+  return word.slice(0, 1).toUpperCase() + word.slice(1);
+};
+
+const hasDotFirstWord = (str: string) => {
+  return str.includes('.') ? str.split('.')[0] : str;
+};
+
 /**
  * get callback statement
- * @returns
+ * @returns image.PixelMap  mockImage.PixelMap  mockImage
  */
-export function getCallbackStatement(): string {
-  return `const len = args.length;
-  if (typeof args[len - 1] === 'function') {
-    args[len - 1].call(this, null, '[PC Preview] unknown type')
-  }`;
+export function getCallbackStatement(mockApi: string, paramTypeString?: string): string {
+  let outPut = `if (args && typeof args[args.length - 1] === 'function') {
+    args[args.length - 1].call(this,`;
+  const callbackError = "{'code': '','data': '','name': '','message': '','stack': ''}";
+  let callbackData = '';
+  if (paramTypeString) {
+    const callbackParams = removeCallback(paramTypeString);
+    let importType = '';
+    if (callbackParams.value) {
+      importType = isInImportType(mockApi, callbackParams.value);
+    }
+    if (importType === 'isHasDotImportMock') {
+      const upperWord = firstLetterWord(callbackParams.value); // Image.PixelMap
+      const firstWord = hasDotFirstWord(upperWord); // Image
+      callbackData = `mock${firstWord}()${upperWord.slice(firstWord.length)}`;
+    } else if (importType === 'isNoHasDotImportMock') {
+      callbackData = callbackParams.value;
+    } else if (importType === 'isImportMock') {
+      callbackData = `mock${firstLetterWord(callbackParams.value)}()`;
+    } else if (importType === 'isImport') {
+      callbackData = callbackParams.value;
+    } else if (importType === 'noImport') {
+      let paramsTypeNoHas = true;
+      if (callbackParams.value.endsWith(']')) {
+        callbackData = '[]';
+      } else {
+        Object.keys(paramsTypeStart).forEach(item => {
+          if (callbackParams.value.startsWith(item)) {
+            callbackData = paramsTypeStart[item];
+            paramsTypeNoHas = false;
+          }
+        });
+        if (paramsTypeNoHas) {
+          callbackData = callbackParams.value;
+        }
+      }
+    } else {
+      callbackData = '[PC Preview] unknown type';
+    }
+    if (callbackParams.type === 'AsyncCallback') {
+      outPut += ` ${callbackError},`;
+    }
+  }
+  outPut += callbackData === '[PC Preview] unknown type' ? ` '${callbackData}');\n}` : ` ${callbackData});\n}`;
+  return outPut;
 }
 
 /**

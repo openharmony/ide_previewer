@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-import { SourceFile, SyntaxKind } from 'typescript';
-import { MethodSignatureEntity } from '../declaration-node/methodSignatureDeclaration';
+import type { SourceFile } from 'typescript';
+import { SyntaxKind } from 'typescript';
+import type { MethodSignatureEntity } from '../declaration-node/methodSignatureDeclaration';
 import { getCallbackStatement, getReturnStatement, getWarnConsole } from './generateCommonUtil';
 
 /**
@@ -24,7 +25,7 @@ import { getCallbackStatement, getReturnStatement, getWarnConsole } from './gene
  * @param sourceFile
  * @returns
  */
-export function generateCommonMethodSignature(rootName: string, methodSignatureArray: Array<MethodSignatureEntity>, sourceFile: SourceFile): string {
+export function generateCommonMethodSignature(rootName: string, methodSignatureArray: Array<MethodSignatureEntity>, sourceFile: SourceFile, mockApi: string): string {
   let methodSignatureBody = '';
   const methodEntity = methodSignatureArray[0];
   methodSignatureBody += `${methodEntity.functionName}: function(...args) {`;
@@ -33,7 +34,7 @@ export function generateCommonMethodSignature(rootName: string, methodSignatureA
     const args = methodEntity.args;
     const len = args.length;
     if (args.length > 0 && args[len - 1].paramName.toLowerCase().includes('callback')) {
-      methodSignatureBody += getCallbackStatement();
+      methodSignatureBody += getCallbackStatement(mockApi, args[len - 1]?.paramTypeString);
     }
     if (methodEntity.returnType.returnKind !== SyntaxKind.VoidKeyword) {
       if (rootName === 'Context' && methodEntity.returnType.returnKindName === 'Context') {
@@ -44,6 +45,7 @@ export function generateCommonMethodSignature(rootName: string, methodSignatureA
     }
   } else {
     const argSet: Set<string> = new Set<string>();
+    let argParamsSet: string = '';
     const returnSet: Set<string> = new Set<string>();
     let isCallBack = false;
     methodSignatureArray.forEach(value => {
@@ -52,11 +54,14 @@ export function generateCommonMethodSignature(rootName: string, methodSignatureA
         argSet.add(arg.paramName);
         if (arg.paramName.toLowerCase().includes('callback')) {
           isCallBack = true;
+          if (arg.paramTypeString) {
+            argParamsSet = arg.paramTypeString;
+          }
         }
       });
     });
     if (isCallBack) {
-      methodSignatureBody += getCallbackStatement();
+      methodSignatureBody += getCallbackStatement(mockApi, argParamsSet);
     }
     let isReturnPromise = false;
     returnSet.forEach(value => {

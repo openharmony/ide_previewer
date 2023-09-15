@@ -16,16 +16,24 @@
 import {
   isClassDeclaration, isEnumDeclaration, isExportDeclaration, isFunctionDeclaration, isIdentifier,
   isImportEqualsDeclaration, isInterfaceDeclaration, isModuleBlock, isModuleDeclaration, isTypeAliasDeclaration,
-  isVariableStatement, ModuleDeclaration, Node, SourceFile
+  isVariableStatement
 } from 'typescript';
+import type { ModuleDeclaration, Node, SourceFile } from 'typescript';
 import { getExportKeyword } from '../common/commonUtils';
-import { ClassEntity, getClassDeclaration } from './classDeclaration';
-import { EnumEntity, getEnumDeclaration } from './enumDeclaration';
-import { FunctionEntity, getFunctionDeclaration } from './functionDeclaration';
-import { getExportDeclaration, getModuleImportEqual, ImportEuqalEntity } from './importAndExportDeclaration';
-import { getInterfaceDeclaration, InterfaceEntity } from './interfaceDeclaration';
-import { getTypeAliasDeclaration, TypeAliasEntity } from './typeAliasDeclaration';
-import { getVariableStatementDeclaration, StatementEntity } from './variableStatementResolve';
+import { getClassDeclaration } from './classDeclaration';
+import type { ClassEntity } from './classDeclaration';
+import { getEnumDeclaration } from './enumDeclaration';
+import type { EnumEntity } from './enumDeclaration';
+import { getFunctionDeclaration } from './functionDeclaration';
+import type { FunctionEntity } from './functionDeclaration';
+import { getExportDeclaration, getModuleImportEqual } from './importAndExportDeclaration';
+import type { ImportEuqalEntity } from './importAndExportDeclaration';
+import { getInterfaceDeclaration } from './interfaceDeclaration';
+import type { InterfaceEntity } from './interfaceDeclaration';
+import { getTypeAliasDeclaration } from './typeAliasDeclaration';
+import type { TypeAliasEntity } from './typeAliasDeclaration';
+import { getVariableStatementDeclaration } from './variableStatementResolve';
+import type { StatementEntity } from './variableStatementResolve';
 
 /**
  * get module info
@@ -63,13 +71,13 @@ export function getModuleDeclaration(node: Node, sourceFile: SourceFile, fileNam
   if (moduleBody !== undefined && isModuleBlock(moduleBody)) {
     moduleBody.statements.forEach(value => {
       if (isFunctionDeclaration(value)) {
-        const FunctionEntity = getFunctionDeclaration(value, sourceFile);
-        if (functionDeclarations.get(FunctionEntity.functionName) !== undefined) {
-          functionDeclarations.get(FunctionEntity.functionName)?.push(FunctionEntity);
+        const functionEntity = getFunctionDeclaration(value, sourceFile);
+        if (functionDeclarations.get(functionEntity.functionName) !== undefined) {
+          functionDeclarations.get(functionEntity.functionName)?.push(functionEntity);
         } else {
           const functionArray: Array<FunctionEntity> = [];
-          functionArray.push(FunctionEntity);
-          functionDeclarations.set(FunctionEntity.functionName, functionArray);
+          functionArray.push(functionEntity);
+          functionDeclarations.set(functionEntity.functionName, functionArray);
         }
       } else if (isTypeAliasDeclaration(value)) {
         typeAliasDeclarations.push(getTypeAliasDeclaration(value, sourceFile));

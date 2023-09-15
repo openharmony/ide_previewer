@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { IndexSignatureDeclaration, SourceFile } from 'typescript';
+import type { IndexSignatureDeclaration, SourceFile } from 'typescript';
 
 /**
  * get index signature info

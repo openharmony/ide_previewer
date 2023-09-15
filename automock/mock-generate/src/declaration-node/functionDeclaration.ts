@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-import { FunctionDeclaration, Node, SourceFile } from 'typescript';
-import { getFunctionAndMethodReturnInfo, getParameter, ParameterEntity, ReturnTypeEntity } from '../common/commonUtils';
+import type { FunctionDeclaration, Node, SourceFile } from 'typescript';
+import { getFunctionAndMethodReturnInfo, getParameter } from '../common/commonUtils';
+import type { ParameterEntity, ReturnTypeEntity } from '../common/commonUtils';
 
 /**
  * get function info

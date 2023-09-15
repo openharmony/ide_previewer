@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-import { isIdentifier, SourceFile, VariableStatement } from 'typescript';
+import { isIdentifier } from 'typescript';
+import type { SourceFile, VariableStatement } from 'typescript';
 
 /**
  * get const declaration variable

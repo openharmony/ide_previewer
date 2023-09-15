@@ -13,12 +13,15 @@
  * limitations under the License.
  */
 
-import { SourceFile, SyntaxKind } from 'typescript';
-import { collectAllLegalImports, firstCharacterToUppercase, getAllFileNameList } from '../common/commonUtils';
-import { ImportElementEntity } from '../declaration-node/importAndExportDeclaration';
-import { getDefaultExportClassDeclaration, getSourceFileFunctions, getSourceFileVariableStatements, SourceFileEntity } from '../declaration-node/sourceFileElementsAssemply';
+import fs from 'fs';
+import path from 'path';
+import { ScriptTarget, SyntaxKind, createSourceFile } from 'typescript';
+import type { SourceFile } from 'typescript';
+import { collectAllLegalImports, dtsFileList, firstCharacterToUppercase, getAllFileNameList, getApiInputPath } from '../common/commonUtils';
+import type { ImportElementEntity } from '../declaration-node/importAndExportDeclaration';
+import { getDefaultExportClassDeclaration } from '../declaration-node/sourceFileElementsAssemply';
+import type { SourceFileEntity } from '../declaration-node/sourceFileElementsAssemply';
 import { generateClassDeclaration } from './generateClassDeclaration';
-import { generateCommonFunction } from './generateCommonFunction';
 import { generateEnumDeclaration } from './generateEnumDeclaration';
 import { addToIndexArray } from './generateIndex';
 import { generateInterfaceDeclaration } from './generateInterfaceDeclaration';
@@ -26,7 +29,7 @@ import { generateModuleDeclaration } from './generateModuleDeclaration';
 import { generateStaticFunction } from './generateStaticFunction';
 import { addToSystemIndexArray } from './generateSystemIndex';
 import { generateTypeAliasDeclaration } from './generateTypeAlias';
-import { generateVariableStatementDelcatation } from './generateVariableStatementDeclaration';
+import { generateExportFunction } from './generateExportFunction';
 
 /**
  * generate mock file string
@@ -37,25 +40,29 @@ import { generateVariableStatementDelcatation } from './generateVariableStatemen
  * @returns
  */
 export function generateSourceFileElements(rootName: string, sourceFileEntity: SourceFileEntity, sourceFile: SourceFile, fileName: string): string {
+  
   let mockApi = '';
   const mockFunctionElements: Array<MockFunctionElementEntity> = [];
+  const dependsSourceFileList = collectReferenceFiles(sourceFile);
   const heritageClausesArray = getCurrentApiHeritageArray(sourceFileEntity, sourceFile);
+  const extraImport = [];
+
   if (sourceFileEntity.importDeclarations.length > 0) {
     sourceFileEntity.importDeclarations.forEach(value => {
-      mockApi += generateImportDeclaration(value, fileName, heritageClausesArray);
+      mockApi += generateImportDeclaration(value, fileName, heritageClausesArray, sourceFile.fileName, dependsSourceFileList);
     });
   }
 
   if (sourceFileEntity.moduleDeclarations.length > 0) {
     sourceFileEntity.moduleDeclarations.forEach(value => {
-      mockApi += generateModuleDeclaration('', value, sourceFile, fileName) + '\n';
+      mockApi += generateModuleDeclaration('', value, sourceFile, fileName, mockApi, extraImport) + '\n';
     });
   }
 
   if (sourceFileEntity.classDeclarations.length > 0) {
     sourceFileEntity.classDeclarations.forEach(value => {
       if (!fileName.startsWith('system_') && !value.exportModifiers.includes(SyntaxKind.DefaultKeyword)) {
-        mockApi += generateClassDeclaration('', value, false, '', fileName, sourceFile, false) + '\n';
+        mockApi += generateClassDeclaration('', value, false, '', fileName, sourceFile, false, mockApi) + '\n';
         mockFunctionElements.push({ elementName: value.className, type: 'class' });
       }
     });
@@ -63,7 +70,8 @@ export function generateSourceFileElements(rootName: string, sourceFileEntity: S
 
   if (sourceFileEntity.interfaceDeclarations.length > 0) {
     sourceFileEntity.interfaceDeclarations.forEach(value => {
-      mockApi += generateInterfaceDeclaration('', value, sourceFile, true, sourceFileEntity.interfaceDeclarations) + '\n';
+      mockApi += generateInterfaceDeclaration('', value, sourceFile, true, mockApi, sourceFileEntity.interfaceDeclarations,
+        sourceFileEntity.importDeclarations, extraImport) + '\n';
       mockFunctionElements.push({ elementName: value.interfaceName, type: 'interface' });
     });
   }
@@ -77,8 +85,14 @@ export function generateSourceFileElements(rootName: string, sourceFileEntity: S
 
   if (sourceFileEntity.typeAliasDeclarations.length > 0) {
     sourceFileEntity.typeAliasDeclarations.forEach(value => {
-      mockApi += generateTypeAliasDeclaration(value, false) + '\n';
+      mockApi += generateTypeAliasDeclaration(value, false, sourceFile, extraImport) + '\n';
       mockFunctionElements.push({ elementName: value.typeAliasName, type: 'typeAlias' });
+    });
+  }
+
+  if (sourceFileEntity.functionDeclarations.length > 0) {
+    sourceFileEntity.functionDeclarations.forEach(value => {
+      mockApi += generateExportFunction(value, sourceFile, mockApi) + '\n';
     });
   }
 
@@ -88,7 +102,7 @@ export function generateSourceFileElements(rootName: string, sourceFileEntity: S
     const defaultExportClass = getDefaultExportClassDeclaration(sourceFile);
     if (defaultExportClass.length > 0) {
       defaultExportClass.forEach(value => {
-        mockApi += generateClassDeclaration(rootName, value, false, mockName, '', sourceFile, false) + '\n';
+        mockApi += generateClassDeclaration(rootName, value, false, mockName, '', sourceFile, false, mockApi) + '\n';
         mockFunctionElements.push({ elementName: value.className, type: 'class' });
       });
     }
@@ -104,7 +118,7 @@ export function generateSourceFileElements(rootName: string, sourceFileEntity: S
       if (defaultClass.length > 0) {
         defaultClass.forEach(value => {
           value.staticMethods.forEach(val => {
-            staticMethodBody += generateStaticFunction(val, true, sourceFile);
+            staticMethodBody += generateStaticFunction(val, true, sourceFile, mockApi);
           });
         });
       }
@@ -128,17 +142,21 @@ export function generateSourceFileElements(rootName: string, sourceFileEntity: S
       const mockNameArr = fileName.split('_');
       const mockName = mockNameArr[mockNameArr.length - 1];
       defaultExportClass.forEach(value => {
-        mockApi += generateClassDeclaration(rootName, value, false, mockName, '', sourceFile, false) + '\n';
+        mockApi += generateClassDeclaration(rootName, value, false, mockName, '', sourceFile, false, mockApi) + '\n';
       });
     }
   }
   if (sourceFileEntity.exportDeclarations.length > 0) {
     sourceFileEntity.exportDeclarations.forEach(value => {
+      if (value.includes('export type {')) {
+        return;
+      }
       if (!value.includes('export {')) {
         mockApi += `${value}\n`;
       }
     });
   }
+  mockApi = extraImport.join('') + mockApi;
   return mockApi;
 }
 
@@ -146,66 +164,49 @@ export function generateSourceFileElements(rootName: string, sourceFileEntity: S
  * generate import definition
  * @param importEntity
  * @param sourceFileName
+ * @param heritageClausesArray
+ * @param currentFilePath
+ * @param dependsSourceFileList
  * @returns
  */
-export function generateImportDeclaration(importEntity: ImportElementEntity, sourceFileName: string, heritageClausesArray: string[]): string {
-  let importPathName = '';
+export function generateImportDeclaration(
+  importEntity: ImportElementEntity,
+  sourceFileName: string,
+  heritageClausesArray: string[],
+  currentFilePath: string,
+  dependsSourceFileList: SourceFile[]): string {
+  const importDeclaration = referenctImport2ModuleImport(importEntity, currentFilePath, dependsSourceFileList);
+  if (importDeclaration) {
+    return importDeclaration;
+  }
+  
   const importPathSplit = importEntity.importPath.split('/');
-  let fileName = importPathSplit[importPathSplit.length - 1];
-  if (fileName.endsWith('.d.ts') || fileName.endsWith('.d.ets')) {
-    fileName = fileName.split('.d.')[0];
-  }
-  if (fileName.includes('@')) {
-    importPathName = fileName.replace('@', '').replace(/\./g, '_');
-  } else {
-    importPathName = fileName.replace(/\./g, '_');
-  }
-  let importPath = '';
-  for (let i = 0; i < importPathSplit.length - 1; i++) {
-    importPath += importPathSplit[i] + '/';
-  }
-  importPath += importPathName;
-  let importElements = importEntity.importElements;
-  if (!importElements.includes('{') && !importElements.includes('* as') && !heritageClausesArray.includes(importElements)) {
-    if (importEntity.importPath.includes('@ohos')) {
-      const tmpArr = importEntity.importPath.split('.');
-      importElements = `{ mock${firstCharacterToUppercase(tmpArr[tmpArr.length - 1].replace('"', '').replace('\'', ''))} }`;
-    } else {
-      importElements = `{ ${importElements} }`;
-    }
-  }
-  if (checIsDefaultExportClass(importEntity.importElements)) {
-    importElements = `{ ${importEntity.importElements} }`;
-  }
-  const testPath = importPath.replace(/"/g, '').replace(/'/g, '').split('/');
-  if (getAllFileNameList().has(testPath[testPath.length - 1]) || testPath[testPath.length - 1] === 'ohos_application_want') {
-    let tmpImportPath = importPath.replace(/'/g, '').replace(/"/g, '');
-    if (!tmpImportPath.startsWith('./') && !tmpImportPath.startsWith('../')) {
-      importPath = `'./${tmpImportPath}'`;
-    }
-    tmpImportPath = importPath.replace(/'/g, '').replace(/"/g, '');
-    if (sourceFileName === 'tagSession' && tmpImportPath === './basic' || sourceFileName === 'notificationContent' &&
-    tmpImportPath === './ohos_multimedia_image') {
-      importPath = `'.${importPath.replace(/'/g, '')}'`;
-    }
 
-    // adapt no rules .d.ts
-    if (importElements.trimRight().trimEnd() === 'AccessibilityExtensionContext, { AccessibilityElement }') {
-      importElements = '{ AccessibilityExtensionContext, AccessibilityElement }';
-    }
-    if (importElements.trimRight().trimEnd() === '{ image }') {
-      importElements = '{ mockImage as image }';
-    }
-    tmpImportPath = importPath.replace(/'/g, '').replace(/"/g, '');
-    if (sourceFileName === 'AbilityContext' && tmpImportPath === '../ohos_application_Ability' ||
-      sourceFileName === 'Context' && tmpImportPath === './ApplicationContext') {
-      return '';
-    }
-    collectAllLegalImports(importElements);
-    return `import ${importElements} from ${importPath}\n`;
-  } else {
+  let importPath = importPathSplit.slice(0, -1).join('/') + '/';
+  importPath += getImportPathName(importPathSplit);
+
+  const importElements = generateImportElements(importEntity, heritageClausesArray);
+  
+  const testPath = importPath.replace(/"/g, '').replace(/'/g, '').split('/');
+  if (!getAllFileNameList().has(testPath[testPath.length - 1]) && testPath[testPath.length - 1] !== 'ohos_application_want') {
     return '';
   }
+
+  let tmpImportPath = importPath.replace(/'/g, '').replace(/"/g, '');
+  if (!tmpImportPath.startsWith('./') && !tmpImportPath.startsWith('../')) {
+    importPath = `'./${tmpImportPath}'`;
+  }
+  if (sourceFileName === 'tagSession' && tmpImportPath === './basic' || sourceFileName === 'notificationContent' &&
+  tmpImportPath === './ohos_multimedia_image') {
+    importPath = `'.${importPath.replace(/'/g, '')}'`;
+  }
+
+  if (sourceFileName === 'AbilityContext' && tmpImportPath === '../ohos_application_Ability' ||
+    sourceFileName === 'Context' && tmpImportPath === './ApplicationContext') {
+    return '';
+  }
+  collectAllLegalImports(importElements);
+  return `import ${importElements} from ${importPath}\n`;
 }
 
 /**
@@ -213,7 +214,7 @@ export function generateImportDeclaration(importEntity: ImportElementEntity, sou
  * @param importName
  * @returns
  */
- function checIsDefaultExportClass(importName: string): boolean {
+function checIsDefaultExportClass(importName: string): boolean {
   const defaultExportClass = ['Context', 'BaseContext', 'ExtensionContext', 'ApplicationContext',
     'ExtensionAbility', 'Ability', 'UIExtensionAbility', 'UIExtensionContext'];
   return defaultExportClass.includes(importName);
@@ -244,6 +245,98 @@ function getCurrentApiHeritageArray(sourceFileEntity: SourceFileEntity, sourceFi
   });
   return heritageClausesArray;
 }
+
+function collectReferenceFiles(sourceFile: SourceFile): SourceFile[] {
+  const referenceElementTemplate = /\/\/\/\s*<reference\s+path="[^'"\[\]]+/g;
+  const referenceFiles: SourceFile[] = [];
+  const text = sourceFile.text;
+  const referenceElement = text.match(referenceElementTemplate);
+
+  referenceElement && referenceElement.forEach(element => {
+    const referenceRelatePath = element.split(/path=["']/g)[1];
+    const realReferenceFilePath = contentRelatePath2RealRelatePath(sourceFile.fileName, referenceRelatePath);
+    if (!realReferenceFilePath) {
+      return;
+    }
+
+    if (!fs.existsSync(realReferenceFilePath)) {
+      console.error(`Can not resolve file: ${realReferenceFilePath}`);
+      return;
+    }
+    const code = fs.readFileSync(realReferenceFilePath);
+    referenceFiles.push(createSourceFile(realReferenceFilePath, code.toString(), ScriptTarget.Latest));
+    !dtsFileList.includes(realReferenceFilePath) && dtsFileList.push(realReferenceFilePath);
+  });
+  return referenceFiles;
+}
+
+function contentRelatePath2RealRelatePath(currentFilePath: string, contentReferenceRelatePath: string): string {
+  const conmponentSourceFileTemplate = /component\/[^'"\/]+\.d\.ts/;
+  const currentFolderSourceFileTemplate = /\.\/[^\/]+\.d\.ts/;
+  const baseFileNameTemplate = /[^\/]+\.d\.ts/;
+
+  let realReferenceFilePath: string;
+  if (conmponentSourceFileTemplate.test(contentReferenceRelatePath)) {
+    const newRelateReferencePath = contentReferenceRelatePath.match(conmponentSourceFileTemplate)[0];
+    const referenceFileName = path.basename(newRelateReferencePath);
+    realReferenceFilePath = path.join(getApiInputPath(), '@internal', 'component', 'ets', referenceFileName);
+  } else if (currentFolderSourceFileTemplate.test(contentReferenceRelatePath)) {
+    const referenceFileName = path.basename(contentReferenceRelatePath);
+    realReferenceFilePath = currentFilePath.replace(baseFileNameTemplate, referenceFileName).replace(/\//g, path.sep);
+  } else {
+    console.error(`Can not find reference ${contentReferenceRelatePath} from ${currentFilePath}`);
+    return '';
+  }
+  return realReferenceFilePath;
+}
+
+export function referenctImport2ModuleImport(importEntity: ImportElementEntity, currentFilePath: string,
+  dependsSourceFileList: SourceFile[]): string {
+  if (dependsSourceFileList.length && !importEntity.importPath.includes('.')) {
+    for (let i = 0; i < dependsSourceFileList.length; i++) {
+      if (dependsSourceFileList[i].text.includes(`declare module ${importEntity.importPath.replace(/'/g, '"')}`)) {
+        let relatePath = path.relative(path.dirname(currentFilePath), dependsSourceFileList[i].fileName)
+          .replace(/\\/g, '/')
+          .replace(/.d.ts/g, '')
+          .replace(/.d.es/g, '');
+        relatePath = (relatePath.startsWith('@internal/component') ? './' : '') + relatePath;
+        return `import ${importEntity.importElements} from "${relatePath}"\n`;
+      }
+    }
+  }
+  return '';
+}
+
+function getImportPathName(importPathSplit: string[]): string {
+  let importPathName: string;
+  let fileName = importPathSplit[importPathSplit.length - 1];
+  if (fileName.endsWith('.d.ts') || fileName.endsWith('.d.ets')) {
+    fileName = fileName.split(/\.d\.e?ts/)[0];
+  }
+  if (fileName.includes('@')) {
+    importPathName = fileName.replace('@', '').replace(/\./g, '_');
+  } else {
+    importPathName = fileName.replace(/\./g, '_');
+  }
+  return importPathName;
+}
+
+function generateImportElements(importEntity: ImportElementEntity, heritageClausesArray: string[]): string {
+  let importElements = importEntity.importElements;
+  if (!importElements.includes('{') && !importElements.includes('* as') && !heritageClausesArray.includes(importElements) && importEntity.importPath.includes('@ohos')) {
+    const tmpArr = importEntity.importPath.split('.');
+    importElements = `{ mock${firstCharacterToUppercase(tmpArr[tmpArr.length - 1].replace('"', '').replace('\'', ''))} }`;
+  } else {
+    // adapt no rules .d.ts
+    if (importElements.trimRight().trimEnd() === 'AccessibilityExtensionContext, { AccessibilityElement }') {
+      importElements = '{ AccessibilityExtensionContext, AccessibilityElement }';
+    } else if (importElements.trimRight().trimEnd() === '{ image }') {
+      importElements = '{ mockImage as image }';
+    }
+  }
+  return importElements;
+}
+
 
 interface MockFunctionElementEntity {
   elementName: string,

@@ -13,17 +13,21 @@
  * limitations under the License.
  */
 
+import type { ClassDeclaration, SourceFile } from 'typescript';
 import {
-  ClassDeclaration, isConstructorDeclaration,
-  isMethodDeclaration, isPropertyDeclaration,
-  isTypeParameterDeclaration, SourceFile, SyntaxKind
+  isConstructorDeclaration, isMethodDeclaration, isPropertyDeclaration, isTypeParameterDeclaration, SyntaxKind
 } from 'typescript';
 import { getExportKeyword } from '../common/commonUtils';
-import { ConstructorEntity, getConstructorDeclaration } from './constructorDeclaration';
-import { getHeritageClauseDeclaration, HeritageClauseEntity } from './heritageClauseDeclaration';
-import { getMethodDeclaration, MethodEntity, StaticMethodEntity } from './methodDeclaration';
-import { getPropertyDeclaration, PropertyEntity } from './propertyDeclaration';
-import { getTypeParameterDeclaration, TypeParameterEntity } from './typeParameterDeclaration';
+import { getConstructorDeclaration } from './constructorDeclaration';
+import type { ConstructorEntity } from './constructorDeclaration';
+import { getHeritageClauseDeclaration } from './heritageClauseDeclaration';
+import type { HeritageClauseEntity } from './heritageClauseDeclaration';
+import { getMethodDeclaration } from './methodDeclaration';
+import type { MethodEntity, StaticMethodEntity } from './methodDeclaration';
+import { getPropertyDeclaration } from './propertyDeclaration';
+import type { PropertyEntity } from './propertyDeclaration';
+import { getTypeParameterDeclaration } from './typeParameterDeclaration';
+import type { TypeParameterEntity } from './typeParameterDeclaration';
 
 /**
  * get class info

@@ -13,11 +13,9 @@
  * limitations under the License.
  */
 
-import { CallSignatureDeclaration, Node, SourceFile } from 'typescript';
-import {
-  getFunctionAndMethodReturnInfo, getParameter, getPropertyName,
-  ParameterEntity, ReturnTypeEntity
-} from '../common/commonUtils';
+import type { CallSignatureDeclaration, Node, SourceFile } from 'typescript';
+import { getFunctionAndMethodReturnInfo, getParameter, getPropertyName } from '../common/commonUtils';
+import type { ParameterEntity, ReturnTypeEntity } from '../common/commonUtils';
 
 /**
  * get nameless function info

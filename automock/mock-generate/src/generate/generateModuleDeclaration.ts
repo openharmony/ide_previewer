@@ -13,9 +13,11 @@
  * limitations under the License.
  */
 
-import { SourceFile, SyntaxKind } from 'typescript';
+import path from 'path';
+import { SyntaxKind } from 'typescript';
+import type { SourceFile } from 'typescript';
 import { firstCharacterToUppercase } from '../common/commonUtils';
-import { ModuleBlockEntity } from '../declaration-node/moduleDeclaration';
+import type { ModuleBlockEntity } from '../declaration-node/moduleDeclaration';
 import {
   getDefaultExportClassDeclaration, getSourceFileFunctions,
   getSourceFileVariableStatements
@@ -37,14 +39,19 @@ import { generateVariableStatementDelcatation } from './generateVariableStatemen
  * @param moduleEntity
  * @param sourceFile
  * @param filename
+ * @param extraImport
  * @returns
  */
-export function generateModuleDeclaration(rootName: string, moduleEntity: ModuleBlockEntity, sourceFile: SourceFile, filename: string): string {
-  const moduleName = moduleEntity.moduleName;
-  const mockNameArr = filename.split('_');
-  const mockName = mockNameArr[mockNameArr.length - 1];
-  let moduleBody = `export function mock${firstCharacterToUppercase(mockName)}() {\n`;
-  addToIndexArray({ fileName: filename, mockFunctionName: `mock${firstCharacterToUppercase(mockName)}` });
+export function generateModuleDeclaration(rootName: string, moduleEntity: ModuleBlockEntity, sourceFile: SourceFile,
+  filename: string, mockApi: string, extraImport: string[]): string {
+  let moduleName = moduleEntity.moduleName.replace(/["']/g, '');
+  let moduleBody = `export function mock${firstCharacterToUppercase(moduleName)}() {\n`;
+  if (!(moduleEntity.exportModifiers.includes(SyntaxKind.DeclareKeyword) &&
+    (moduleEntity.moduleName.startsWith('"') || moduleEntity.moduleName.startsWith('\''))) &&
+    path.basename(sourceFile.fileName).startsWith('@ohos')
+  ) {
+    addToIndexArray({ fileName: filename, mockFunctionName: `mock${firstCharacterToUppercase(moduleName)}` });
+  }
   let outBody = '';
   const defaultExportClass = getDefaultExportClassDeclaration(sourceFile);
 
@@ -63,13 +70,13 @@ export function generateModuleDeclaration(rootName: string, moduleEntity: Module
           if (value.staticMethods.length > 0) {
             let staticMethodBody = '';
             value.staticMethods.forEach(val => {
-              staticMethodBody += generateStaticFunction(val, true, sourceFile) + '\n';
+              staticMethodBody += generateStaticFunction(val, true, sourceFile, mockApi) + '\n';
             });
             moduleBody += staticMethodBody;
           }
           moduleBody += '}';
         } else {
-          outBody += generateClassDeclaration('', value, false, '', filename, sourceFile, false);
+          outBody += generateClassDeclaration('', value, false, '', filename, sourceFile, false, mockApi);
         }
       }
     });
@@ -77,7 +84,7 @@ export function generateModuleDeclaration(rootName: string, moduleEntity: Module
 
   if (moduleEntity.typeAliasDeclarations.length > 0) {
     moduleEntity.typeAliasDeclarations.forEach(value => {
-      outBody += generateTypeAliasDeclaration(value, true) + '\n';
+      outBody += generateTypeAliasDeclaration(value, true, sourceFile, extraImport) + '\n';
     });
   }
 
@@ -90,9 +97,9 @@ export function generateModuleDeclaration(rootName: string, moduleEntity: Module
   if (moduleEntity.classDeclarations.length > 0) {
     moduleEntity.classDeclarations.forEach(value => {
       if (value.exportModifiers.length > 0 && value.exportModifiers.includes(SyntaxKind.ExportKeyword)) {
-        outBody += generateClassDeclaration(moduleName, value, false, '', '', sourceFile, false) + '\n';
+        outBody += generateClassDeclaration(moduleName, value, false, '', '', sourceFile, false, mockApi) + '\n';
       } else {
-        moduleBody += '\t' + generateClassDeclaration(moduleName, value, false, '', '', sourceFile, true) + '\n';
+        moduleBody += '\t' + generateClassDeclaration(moduleName, value, false, '', '', sourceFile, true, mockApi) + '\n';
       }
     });
   }
@@ -100,9 +107,9 @@ export function generateModuleDeclaration(rootName: string, moduleEntity: Module
   if (moduleEntity.interfaceDeclarations.length > 0) {
     moduleEntity.interfaceDeclarations.forEach(value => {
       if (value.exportModifiers.length > 0) {
-        outBody += generateInterfaceDeclaration(moduleName, value, sourceFile, false, moduleEntity.interfaceDeclarations) + ';\n';
+        outBody += generateInterfaceDeclaration(moduleName, value, sourceFile, false, mockApi, moduleEntity.interfaceDeclarations) + ';\n';
       } else {
-        moduleBody += '\t' + generateInterfaceDeclaration(moduleName, value, sourceFile, false, moduleEntity.interfaceDeclarations) + ';\n';
+        moduleBody += '\t' + generateInterfaceDeclaration(moduleName, value, sourceFile, false, mockApi, moduleEntity.interfaceDeclarations) + ';\n';
       }
     });
   }
@@ -117,16 +124,10 @@ export function generateModuleDeclaration(rootName: string, moduleEntity: Module
     });
   }
 
-  if (moduleEntity.moduleDeclarations.length > 0) {
-    moduleEntity.moduleDeclarations.forEach(value => {
-      moduleBody += generateInnerModule(value, sourceFile) + '\n';
-    });
-  }
-
   let functionBody = '';
   if (moduleEntity.functionDeclarations.size > 0) {
     moduleEntity.functionDeclarations.forEach(value => {
-      functionBody += '\t' + generateCommonFunction(moduleName, value, sourceFile) + '\n';
+      functionBody += '\t' + generateCommonFunction(moduleName, value, sourceFile, mockApi) + '\n';
     });
   }
 
@@ -143,7 +144,7 @@ export function generateModuleDeclaration(rootName: string, moduleEntity: Module
   let sourceFileFunctionBody = '';
   if (sourceFileFunctions.size > 0) {
     sourceFileFunctions.forEach(value => {
-      sourceFileFunctionBody += generateCommonFunction(moduleName, value, sourceFile);
+      sourceFileFunctionBody += generateCommonFunction(moduleName, value, sourceFile, mockApi);
     });
   }
 
@@ -177,12 +178,29 @@ export function generateModuleDeclaration(rootName: string, moduleEntity: Module
 }
 
 /**
+ * generate inner module for declare module
+ * @param moduleEntity
+ * @returns
+ */
+function generateInnerDeclareModule(moduleEntity: ModuleBlockEntity): string {
+  let moduleName = '$' + moduleEntity.moduleName.replace(/["']/g, '');
+  let module = `\n\texport const ${moduleName} = `;
+  if (moduleEntity.exportDeclarations.length > 0) {
+    moduleEntity.exportDeclarations.forEach(value => {
+      module += value.match(/{[^{}]*}/g)[0] + '\n';
+    });
+  }
+  return module;
+}
+
+/**
  * generate inner module
  * @param moduleEntity
  * @param sourceFile
+ * @param extraImport
  * @returns
  */
-function generateInnerModule(moduleEntity: ModuleBlockEntity, sourceFile: SourceFile): string {
+function generateInnerModule(moduleEntity: ModuleBlockEntity, sourceFile: SourceFile, extraImport: string[]): string {
   const moduleName = moduleEntity.moduleName;
   let innerModuleBody = `const ${moduleName} = (()=> {`;
 
@@ -194,7 +212,7 @@ function generateInnerModule(moduleEntity: ModuleBlockEntity, sourceFile: Source
 
   if (moduleEntity.typeAliasDeclarations.length > 0) {
     moduleEntity.typeAliasDeclarations.forEach(value => {
-      innerModuleBody += generateTypeAliasDeclaration(value, true) + '\n';
+      innerModuleBody += generateTypeAliasDeclaration(value, true, sourceFile, extraImport) + '\n';
     });
   }
 
@@ -206,14 +224,14 @@ function generateInnerModule(moduleEntity: ModuleBlockEntity, sourceFile: Source
 
   if (moduleEntity.interfaceDeclarations.length > 0) {
     moduleEntity.interfaceDeclarations.forEach(value => {
-      innerModuleBody += generateInterfaceDeclaration(moduleName, value, sourceFile, false, moduleEntity.interfaceDeclarations) + '\n';
+      innerModuleBody += generateInterfaceDeclaration(moduleName, value, sourceFile, false, '', moduleEntity.interfaceDeclarations) + '\n';
     });
   }
 
   let functionBody = 'return {';
   if (moduleEntity.functionDeclarations.size > 0) {
     moduleEntity.functionDeclarations.forEach(value => {
-      functionBody += generateCommonFunction(moduleName, value, sourceFile) + '\n';
+      functionBody += generateCommonFunction(moduleName, value, sourceFile, '') + '\n';
     });
   }
 
@@ -245,6 +263,9 @@ function generateInnerModule(moduleEntity: ModuleBlockEntity, sourceFile: Source
  */
 function getModuleExportElements(moduleEntity: ModuleBlockEntity): Array<ModuleExportEntity> {
   const exportElements: Array<ModuleExportEntity> = [];
+  if (moduleEntity.moduleName.startsWith('"') && moduleEntity.moduleName.endsWith('"')) {
+    return exportElements;
+  }
   if (moduleEntity.classDeclarations.length > 0) {
     moduleEntity.classDeclarations.forEach(value => {
       exportElements.push({ name: firstCharacterToUppercase(value.className), type: 'class' });

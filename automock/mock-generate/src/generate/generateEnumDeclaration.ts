@@ -14,7 +14,7 @@
  */
 
 import { SyntaxKind } from 'typescript';
-import { EnumEntity } from '../declaration-node/enumDeclaration';
+import type { EnumEntity } from '../declaration-node/enumDeclaration';
 
 /**
  * generate enum

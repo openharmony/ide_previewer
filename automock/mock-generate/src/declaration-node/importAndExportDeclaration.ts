@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-import { ExportAssignment, ExportDeclaration, ImportDeclaration,
-   ImportEqualsDeclaration, isImportDeclaration, Node, SourceFile } from 'typescript';
+import type { ExportAssignment, ExportDeclaration, ImportDeclaration,
+  ImportEqualsDeclaration, Node, SourceFile } from 'typescript';
+import { isImportDeclaration } from 'typescript';
 
 /**
  * get current sourceFile all imports

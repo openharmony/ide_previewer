@@ -17,14 +17,12 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { createSourceFile, ScriptTarget } from 'typescript';
-import { collectAllFileName, getAllClassDeclaration } from './common/commonUtils';
+import { collectAllFileName, getAllClassDeclaration, dtsFileList, getOhosInterfacesDir } from './common/commonUtils';
 import { getSourceFileAssembly } from './declaration-node/sourceFileElementsAssemply';
 import { generateEntry } from './generate/generateEntry';
 import { generateIndex } from './generate/generateIndex';
 import { generateSourceFileElements } from './generate/generateMockJsFile';
 import { generateSystemIndex } from './generate/generateSystemIndex';
-
-const dtsFileList: Array<string> = [];
 
 /**
  * get all api .d.ts file path
@@ -33,7 +31,7 @@ const dtsFileList: Array<string> = [];
  */
 function getAllDtsFile(dir: string): Array<string> {
   const arr = fs.readdirSync(dir);
-  if (!dir.toString().includes('node_modules') && !dir.toString().includes('/@internal/component/')) {
+  if (!dir.toString().includes('node_modules') && !dir.toString().includes(path.join('@internal', 'component'))) {
     arr.forEach(value => {
       const fullPath = path.join(dir, value);
       const stats = fs.statSync(fullPath);
@@ -51,7 +49,7 @@ function getAllDtsFile(dir: string): Array<string> {
  * delete the old mock file befor generate new mock file
  * @param outDir
  */
- function deleteOldMockJsFile(outDir: string) {
+function deleteOldMockJsFile(outDir: string): void {
   const arr = fs.readdirSync(outDir);
   arr.forEach(value => {
     const currPath = path.join(outDir, value);
@@ -73,7 +71,7 @@ function getAllDtsFile(dir: string): Array<string> {
  * @param dirname
  * @returns
  */
-function mkdirsSync(dirname) {
+function mkdirsSync(dirname): boolean {
   if (fs.existsSync(dirname)) {
     return true;
   } else {
@@ -82,9 +80,10 @@ function mkdirsSync(dirname) {
       return true;
     }
   }
+  return false;
 }
 
-function main(apiInputPath) {
+function main(apiInputPath): void {
   let interfaceRootDir = '';
   if (os.platform() === 'linux' || os.platform() === 'darwin') {
     interfaceRootDir = __dirname.split('/out')[0];
@@ -100,47 +99,57 @@ function main(apiInputPath) {
     collectAllFileName(value);
     if (value.endsWith('.d.ts') || value.endsWith('.d.ets')) {
       const code = fs.readFileSync(value);
-      const sourceFile = createSourceFile('', code.toString(), ScriptTarget.Latest);
+      const sourceFile = createSourceFile(value, code.toString(), ScriptTarget.Latest);
       getAllClassDeclaration(sourceFile);
     }
   });
 
-  dtsFileList.forEach(value => {
-    if (value.endsWith('.d.ts') || value.endsWith('.d.ets')) {
-      const code = fs.readFileSync(value);
-      const sourceFile = createSourceFile('', code.toString(), ScriptTarget.Latest);
-      let fileName: string;
-      if (value.endsWith('.d.ts')) {
-        fileName = path.basename(value).split('.d.ts')[0];
-      } else if (value.endsWith('.d.ets')) {
-        fileName = path.basename(value).split('.d.ets')[0];
-      }
-      let outputFileName = '';
-      if (fileName.includes('@')) {
-        outputFileName = fileName.split('@')[1].replace(/\./g, '_');
-      } else {
-        outputFileName = fileName;
-      }
+  let index = 0;
+  while (index < dtsFileList.length) {
+    const value = dtsFileList[index];
+    index ++;
 
-      let tmpOutputMockJsFileDir = outMockJsFileDir;
-      if (!outputFileName.startsWith('system_')) {
-        tmpOutputMockJsFileDir = path.join(outMockJsFileDir, 'napi');
-      }
-      let dirName = '';
-      if (os.platform() === 'linux' || os.platform() === 'darwin') {
-        dirName = path.join(tmpOutputMockJsFileDir, path.dirname(value).split('/api')[1]);
-      } else {
-        dirName = path.join(tmpOutputMockJsFileDir, path.dirname(value).split('\\api')[1]);
-      }
-      if (!fs.existsSync(dirName)) {
-        mkdirsSync(dirName);
-      }
-      const sourceFileEntity = getSourceFileAssembly(sourceFile, fileName);
-      const filePath = path.join(dirName, outputFileName + '.js');
-      fs.writeFileSync(filePath, '');
-      fs.appendFileSync(path.join(filePath), generateSourceFileElements('', sourceFileEntity, sourceFile, outputFileName));
+    if (!value.endsWith('.d.ts') && !value.endsWith('.d.ets')) {
+      continue;
     }
-  });
+
+    const code = fs.readFileSync(value);
+    const sourceFile = createSourceFile(value, code.toString(), ScriptTarget.Latest);
+    let fileName: string;
+    if (value.endsWith('.d.ts')) {
+      fileName = path.basename(value, '.d.ts');
+    } else if (value.endsWith('.d.ets')) {
+      fileName = path.basename(value, '.d.ets');
+    } else {
+      continue;
+    }
+    let outputFileName = '';
+    if (fileName.includes('@')) {
+      outputFileName = fileName.split('@')[1].replace(/\./g, '_');
+    } else {
+      outputFileName = fileName;
+    }
+
+    let tmpOutputMockJsFileDir = outMockJsFileDir;
+    if (!outputFileName.startsWith('system_')) {
+      tmpOutputMockJsFileDir = path.join(outMockJsFileDir, 'napi');
+    }
+
+    if (value.startsWith(getOhosInterfacesDir()) && !apiInputPath.startsWith(getOhosInterfacesDir())) {
+      tmpOutputMockJsFileDir = path.join(tmpOutputMockJsFileDir, '@ohos');
+    }
+
+    let dirName = '';
+    dirName = path.join(tmpOutputMockJsFileDir, path.dirname(value).split(`${path.sep}api`)[1]);
+    if (!fs.existsSync(dirName)) {
+      mkdirsSync(dirName);
+    }
+    const sourceFileEntity = getSourceFileAssembly(sourceFile, fileName);
+    const filePath = path.join(dirName, outputFileName + '.js');
+    fs.writeFileSync(filePath, '');
+    fs.appendFileSync(path.join(filePath), generateSourceFileElements('', sourceFileEntity, sourceFile, outputFileName));
+  }
+
   if (!fs.existsSync(path.join(outMockJsFileDir, 'napi'))) {
     mkdirsSync(path.join(outMockJsFileDir, 'napi'));
   }
@@ -149,5 +158,6 @@ function main(apiInputPath) {
   fs.writeFileSync(path.join(outMockJsFileDir, 'entry.js'), generateEntry());
 }
 
-const apiInputPath = process.argv[2];
+const paramIndex = 2;
+const apiInputPath = process.argv[paramIndex];
 main(apiInputPath);

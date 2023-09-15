@@ -16,17 +16,26 @@
 import {
   isClassDeclaration, isEnumDeclaration, isExportAssignment, isExportDeclaration, isFunctionDeclaration,
   isImportDeclaration, isInterfaceDeclaration, isModuleDeclaration, isTypeAliasDeclaration, isVariableStatement,
-  SourceFile, SyntaxKind
+  SyntaxKind
 } from 'typescript';
-import { ClassEntity, getClassDeclaration } from './classDeclaration';
-import { EnumEntity, getEnumDeclaration } from './enumDeclaration';
-import { FunctionEntity, getFunctionDeclaration } from './functionDeclaration';
-import { getExportAssignment, getImportDeclaration, ImportElementEntity } from './importAndExportDeclaration';
-import { getInterfaceDeclaration, InterfaceEntity } from './interfaceDeclaration';
-import { StaticMethodEntity } from './methodDeclaration';
-import { getModuleDeclaration, ModuleBlockEntity } from './moduleDeclaration';
-import { getTypeAliasDeclaration, TypeAliasEntity } from './typeAliasDeclaration';
-import { getVariableStatementDeclaration, StatementEntity } from './variableStatementResolve';
+import type { SourceFile } from 'typescript';
+import { getClassDeclaration } from './classDeclaration';
+import type { ClassEntity } from './classDeclaration';
+import { getEnumDeclaration } from './enumDeclaration';
+import type { EnumEntity } from './enumDeclaration';
+import { getFunctionDeclaration } from './functionDeclaration';
+import type { FunctionEntity } from './functionDeclaration';
+import { getExportAssignment, getImportDeclaration } from './importAndExportDeclaration';
+import type { ImportElementEntity } from './importAndExportDeclaration';
+import { getInterfaceDeclaration } from './interfaceDeclaration';
+import type { InterfaceEntity } from './interfaceDeclaration';
+import type { StaticMethodEntity } from './methodDeclaration';
+import { getModuleDeclaration } from './moduleDeclaration';
+import type { ModuleBlockEntity } from './moduleDeclaration';
+import { getTypeAliasDeclaration } from './typeAliasDeclaration';
+import type { TypeAliasEntity } from './typeAliasDeclaration';
+import { getVariableStatementDeclaration } from './variableStatementResolve';
+import type { StatementEntity } from './variableStatementResolve';
 
 /**
  * assembly all sourceFile node info
@@ -44,6 +53,7 @@ export function getSourceFileAssembly(sourceFile: SourceFile, fileName: string):
   let exportAssignment: Array<string> = [];
   const staticMethods: Array<Array<StaticMethodEntity>> = [];
   const exportDeclarations: Array<string> = [];
+  const functionDeclarations: Array<FunctionEntity> = [];
 
   sourceFile.forEachChild(node => {
     if (isImportDeclaration(node)) {
@@ -76,7 +86,10 @@ export function getSourceFileAssembly(sourceFile: SourceFile, fileName: string):
       enumDeclarations.push(getEnumDeclaration(node, sourceFile));
     } else if (isExportDeclaration(node)) {
       exportDeclarations.push(sourceFile.text.substring(node.pos, node.end).trimStart().trimEnd());
-    } else {
+    } else if (isFunctionDeclaration(node)){
+      functionDeclarations.push(getFunctionDeclaration(node, sourceFile));
+    }
+    else {
       if (node.kind !== SyntaxKind.EndOfFileToken && !isFunctionDeclaration(node) && !isVariableStatement(node)) {
         console.log('--------------------------- uncaught sourceFile type start -----------------------');
         console.log('fileName: ' + fileName);
@@ -95,7 +108,8 @@ export function getSourceFileAssembly(sourceFile: SourceFile, fileName: string):
     enumDeclarations: enumDeclarations,
     exportAssignment: exportAssignment,
     staticMethods: staticMethods,
-    exportDeclarations: exportDeclarations
+    exportDeclarations: exportDeclarations,
+    functionDeclarations: functionDeclarations,
   };
 }
 
@@ -160,5 +174,6 @@ export interface SourceFileEntity {
   enumDeclarations: Array<EnumEntity>,
   exportAssignment: Array<string>,
   staticMethods: Array<Array<StaticMethodEntity>>,
-  exportDeclarations: Array<string>
+  exportDeclarations: Array<string>,
+  functionDeclarations: Array<FunctionEntity>
 }

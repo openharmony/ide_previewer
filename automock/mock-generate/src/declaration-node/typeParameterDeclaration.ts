@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { Node, SourceFile, TypeParameterDeclaration } from 'typescript';
+import type { Node, SourceFile, TypeParameterDeclaration } from 'typescript';
 
 /**
  * get generic type node info

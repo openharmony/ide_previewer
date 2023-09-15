@@ -1,0 +1,1 @@
+export const INTERFACE_DIR = ['interface', 'sdk-js', 'api'];

@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-import { HeritageClause, Node, SourceFile, SyntaxKind } from 'typescript';
+import type { HeritageClause, Node, SourceFile } from 'typescript';
+import { SyntaxKind } from 'typescript';
 
 /**
  * get heritage info
@@ -22,11 +23,11 @@ import { HeritageClause, Node, SourceFile, SyntaxKind } from 'typescript';
  * @returns
  */
 export function getHeritageClauseDeclaration(node: Node, sourceFile: SourceFile): HeritageClauseEntity {
-  const HeritageClauseNode = node as HeritageClause;
-  const clauseToken = HeritageClauseNode.token === SyntaxKind.ExtendsKeyword ? 'extends' : 'implements';
+  const heritageClauseNode = node as HeritageClause;
+  const clauseToken = heritageClauseNode.token === SyntaxKind.ExtendsKeyword ? 'extends' : 'implements';
   const types: Array<string> = [];
 
-  HeritageClauseNode.types.forEach(value => {
+  heritageClauseNode.types.forEach(value => {
     types.push(sourceFile.text.substring(value.pos, value.end).trimStart().trimEnd());
   });
 

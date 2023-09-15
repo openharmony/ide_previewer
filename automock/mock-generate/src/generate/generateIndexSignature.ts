@@ -14,7 +14,7 @@
  */
 
 import { SyntaxKind } from 'typescript';
-import { IndexSignatureEntity } from '../declaration-node/indexSignatureDeclaration';
+import type { IndexSignatureEntity } from '../declaration-node/indexSignatureDeclaration';
 
 /**
  * generate index signature
@@ -27,7 +27,7 @@ export function generateIndexSignature(signatureEntity: IndexSignatureEntity): s
   if (signatureEntity.indexSignatureKind === SyntaxKind.TypeReference) {
     signatureTypeName = signatureEntity.indexSignatureTypeName;
   } else {
-    signatureTypeName = `'[PC Preview] unknown type',\n`;
+    signatureTypeName = '\'[PC Preview] unknown type\',\n';
   }
   return `${signatureKey}: ${signatureTypeName}`;
 }

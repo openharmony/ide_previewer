@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-import { ConstructorDeclaration, isIdentifier, Node, SourceFile } from 'typescript';
+import type { ConstructorDeclaration, Node, SourceFile } from 'typescript';
+import { isIdentifier } from 'typescript';
 
 /**
  * get constructors info

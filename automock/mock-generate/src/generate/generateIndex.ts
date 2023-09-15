@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-import { firstCharacterToUppercase } from "../common/commonUtils";
+import { firstCharacterToUppercase } from '../common/commonUtils';
 
 /**
  * save all mock function
  */
 const indexArray: Array<IndexEntity> = [];
 
-export function addToIndexArray(indexEntity: IndexEntity) {
+export function addToIndexArray(indexEntity: IndexEntity): void {
   indexArray.push(indexEntity);
 }
 
@@ -64,7 +64,7 @@ export function generateIndex(): string {
   });
 
   indexBody += `export function mockRequireNapiFun() {
-    global.requireNapi = function (...args) {
+    global.requireNapi = function(...args) {
       const globalNapi = global.requireNapiPreview(...args);
       if (globalNapi !== undefined) {
         return globalNapi;

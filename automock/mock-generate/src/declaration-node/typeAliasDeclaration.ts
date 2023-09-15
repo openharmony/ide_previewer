@@ -13,10 +13,8 @@
  * limitations under the License.
  */
 
-import {
-  isTypeLiteralNode, isTypeReferenceNode,
-  isUnionTypeNode, Node, SourceFile, TypeAliasDeclaration
-} from 'typescript';
+import { isTypeLiteralNode, isTypeReferenceNode, isUnionTypeNode } from 'typescript';
+import type { Node, SourceFile, TypeAliasDeclaration } from 'typescript';
 
 /**
  * get type alias info

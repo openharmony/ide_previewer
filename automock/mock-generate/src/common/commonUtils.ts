@@ -14,15 +14,23 @@
  */
 
 import path from 'path';
-import {
-  CallSignatureDeclaration, ComputedPropertyName, FunctionDeclaration, Identifier, isClassDeclaration,
-  isComputedPropertyName, isIdentifier, isModuleBlock, isModuleDeclaration, isPrivateIdentifier, MethodDeclaration,
+import type {
+  CallSignatureDeclaration, ComputedPropertyName, FunctionDeclaration, Identifier, MethodDeclaration,
   MethodSignature, ModifiersArray, ModuleDeclaration, NodeArray, ParameterDeclaration, PropertyName, SourceFile
 } from 'typescript';
+import {
+  isClassDeclaration, isComputedPropertyName, isIdentifier, isModuleBlock, isModuleDeclaration, isPrivateIdentifier
+} from 'typescript';
+import fs from 'fs';
+import type { ImportElementEntity } from '../declaration-node/importAndExportDeclaration';
 
+
+const paramIndex = 2;
 const allLegalImports = new Set<string>();
 const fileNameList = new Set<string>();
 const allClassSet = new Set<string>();
+
+export const dtsFileList: Array<string> = [];
 
 /**
  * get all legal imports
@@ -36,7 +44,7 @@ export function getAllLegalImports(): Set<string> {
  * get all legal imports
  * @param element
  */
-export function collectAllLegalImports(element: string) {
+export function collectAllLegalImports(element: string): void {
   allLegalImports.add(element);
 }
 
@@ -51,7 +59,7 @@ export function getAllFileNameList(): Set<string> {
 /**
  * collect all file name
  */
-export function collectAllFileName(filePath: string) {
+export function collectAllFileName(filePath: string): void {
   const fullFileName = path.basename(filePath);
   let fileName = '';
   if (fullFileName.endsWith('d.ts')) {
@@ -220,3 +228,136 @@ export interface ReturnTypeEntity {
   returnKindName: string,
   returnKind: number
 }
+
+/**
+ * Get OpenHarmony project dir
+ * @return project dir
+ */
+
+export function getProjectDir(): string {
+  const apiInputPath = process.argv[paramIndex];
+  const privateInterface = path.join('vendor', 'huawei', 'interface', 'hmscore_sdk_js', 'api');
+  const openInterface = path.join('interface', 'sdk-js', 'api');
+  if (apiInputPath.indexOf(openInterface) > -1) {
+    return apiInputPath.replace(`${path.sep}${openInterface}`, '');
+  } else {
+    return apiInputPath.replace(`${path.sep}${privateInterface}`, '');
+  }
+}
+
+/**
+ * return interface api dir in OpenHarmony
+ */
+export function getOhosInterfacesDir(): string {
+  return path.join(getProjectDir(), 'interface', 'sdk-js', 'api');
+}
+
+/**
+ * return interface api root path
+ * @returns apiInputPath
+ */
+export function getApiInputPath(): string {
+  return process.argv[paramIndex];
+}
+
+/**
+ * return OpenHarmony file path dependent on by HarmonyOs
+ * @param importPath path of depend imported
+ * @param sourceFile sourceFile of current file
+ * @returns dependsFilePath
+ */
+export function findOhosDependFile(importPath: string, sourceFile: SourceFile): string {
+  const interFaceDir = getOhosInterfacesDir();
+  const tmpImportPath = importPath.replace(/'/g, '').replace('.d.ts', '').replace('.d.ets', '');
+  const sourceFileDir = path.dirname(sourceFile.fileName);
+  let dependsFilePath: string;
+  if (tmpImportPath.startsWith('./')) {
+    const subIndex = 2;
+    dependsFilePath = path.join(sourceFileDir, tmpImportPath.substring(subIndex));
+  } else if (tmpImportPath.startsWith('../')) {
+    const backSymbolList = tmpImportPath.split('/').filter(step => step === '..');
+    dependsFilePath = [
+      ...sourceFileDir.split(path.sep).slice(0, -backSymbolList.length),
+      ...tmpImportPath.split('/').filter(step => step !== '..')
+    ].join(path.sep);
+  } else if (tmpImportPath.startsWith('@ohos.inner.')) {
+    const pathSteps = tmpImportPath.replace(/@ohos\.inner\./g, '').split('.');
+    for (let i = 0; i < pathSteps.length; i++) {
+      const tmpInterFaceDir = path.join(interFaceDir, ...pathSteps.slice(0, i), pathSteps.slice(i).join('.'));
+      if (fs.existsSync(tmpInterFaceDir + '.d.ts')) {
+        return tmpInterFaceDir + '.d.ts';
+      }
+
+      if (fs.existsSync(tmpInterFaceDir + '.d.ets')) {
+        return tmpInterFaceDir + '.d.ets';
+      }
+    }
+  } else if (tmpImportPath.startsWith('@ohos.')) {
+    dependsFilePath = path.join(getOhosInterfacesDir(), tmpImportPath);
+  }
+
+  if (fs.existsSync(dependsFilePath + '.d.ts')) {
+    return dependsFilePath + '.d.ts';
+  }
+
+  if (fs.existsSync(dependsFilePath + '.d.ets')) {
+    return dependsFilePath + '.d.ets';
+  }
+
+  console.warn(`Cannot find module '${importPath}'`);
+  return '';
+}
+
+/**
+ * Determine if the file is a openHarmony interface file
+ * @param path: interface file path
+ * @returns
+ */
+export function isOhosInterface(path: string): boolean {
+  return path.startsWith(getOhosInterfacesDir());
+}
+
+/**
+ * reutn js-sdk root folder full path
+ * @returns
+ */
+export function getJsSdkDir(): string {
+  let sdkJsDir = process.argv[paramIndex].split(path.sep).slice(0, -1).join(path.sep);
+  sdkJsDir += sdkJsDir.endsWith(path.sep) ? '' : path.sep;
+  return sdkJsDir;
+}
+
+/**
+ * Determine whether the object has been imported
+ * @param importDeclarations imported Declaration list in current file
+ * @param typeName Object being inspected
+ * @returns 
+ */
+export function hasBeenImported(importDeclarations: ImportElementEntity[], typeName: string): boolean {
+  if (!typeName.trim()) {
+    return true;
+  }
+  if (isFirstCharLowerCase(typeName)) {
+    return true;
+  }
+  return importDeclarations.some(importDeclaration => importDeclaration.importElements.includes(typeName));
+}
+
+/**
+ * Determine whether the first character in a string is a lowercase letter
+ * @param str target string
+ * @returns 
+ */
+function isFirstCharLowerCase(str: string): boolean {
+  const lowerCaseFirstChar = str[0].toLowerCase();
+  return str[0] === lowerCaseFirstChar;
+}
+
+export const specialFiles = [
+  '@internal/component/ets/common.d.ts',
+  '@internal/component/ets/units.d.ts',
+  '@internal/component/ets/common_ts_ets_api.d.ts',
+  '@internal/component/ets/enums.d.ts',
+  '@internal/component/ets/alert_dialog.d.ts',
+  '@internal/component/ets/ability_component.d.ts'
+];

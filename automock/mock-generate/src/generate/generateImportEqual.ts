@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ImportEuqalEntity } from '../declaration-node/importAndExportDeclaration';
+import type { ImportEuqalEntity } from '../declaration-node/importAndExportDeclaration';
 
 /**
  * generate import equal node info

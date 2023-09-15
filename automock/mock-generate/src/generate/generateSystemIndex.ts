@@ -17,7 +17,7 @@ const systemIndexArray: Array<SystemIndexEntity> = [];
 const systemNoMockArray = ['system.app', 'system.configuration', 'system.device',
   'system.mediaquery', 'system.prompt', 'system.router'];
 
-export function addToSystemIndexArray(systemIndexEntity: SystemIndexEntity) {
+export function addToSystemIndexArray(systemIndexEntity: SystemIndexEntity): void {
   systemIndexArray.push(systemIndexEntity);
 }
 
@@ -30,7 +30,7 @@ export function getSystemIndexArray(): Array<SystemIndexEntity> {
  * @returns
  */
 export function generateSystemIndex(): string {
-  let systemIndex = `import regeneratorRuntime from 'babel-runtime/regenerator'\n`;
+  let systemIndex = 'import regeneratorRuntime from \'babel-runtime/regenerator\'\n';
   let exportFunction = '';
   systemIndexArray.forEach(value => {
     if (!systemNoMockArray.includes(value.filename.replace('_', '.'))) {
@@ -38,13 +38,13 @@ export function generateSystemIndex(): string {
       exportFunction += `${value.mockFunctionName}();\n`;
     }
   });
-  systemIndex += `import {mockRequireNapiFun} from './napi/index';\n`;
+  systemIndex += 'import {mockRequireNapiFun} from \'./napi/index\';\n';
   systemIndex += `;(function mockSystemPlugin() {
     global.regeneratorRuntime = regeneratorRuntime
     global.systemplugin = {}
     global.ohosplugin = {}\n`;
   systemIndex += exportFunction;
-  systemIndex += `mockRequireNapiFun();\n`;
+  systemIndex += 'mockRequireNapiFun();\n';
   systemIndex += '}());';
   return systemIndex;
 }

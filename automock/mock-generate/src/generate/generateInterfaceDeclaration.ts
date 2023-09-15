@@ -13,11 +13,16 @@
  * limitations under the License.
  */
 
-import { SourceFile } from 'typescript';
-import { InterfaceEntity } from '../declaration-node/interfaceDeclaration';
+import fs from 'fs';
+import path from 'path';
+import type { SourceFile } from 'typescript';
+import type { InterfaceEntity } from '../declaration-node/interfaceDeclaration';
 import { generateCommonMethodSignature } from './generateCommonMethodSignature';
 import { generateIndexSignature } from './generateIndexSignature';
 import { generatePropertySignatureDeclaration } from './generatePropertySignatureDeclaration';
+import { dtsFileList, getApiInputPath, hasBeenImported, specialFiles } from '../common/commonUtils';
+import type { ImportElementEntity } from '../declaration-node/importAndExportDeclaration';
+import type { PropertySignatureEntity } from '../declaration-node/propertySignatureDeclaration';
 
 /**
  * generate interface
@@ -28,7 +33,7 @@ import { generatePropertySignatureDeclaration } from './generatePropertySignatur
  * @returns
  */
 export function generateInterfaceDeclaration(rootName: string, interfaceEntity: InterfaceEntity, sourceFile: SourceFile, isSourceFile: boolean,
-  currentSourceInterfaceArray: InterfaceEntity[]): string {
+  mockApi: string, currentSourceInterfaceArray: InterfaceEntity[], importDeclarations?: ImportElementEntity[], extraImport?: string[]): string {
   const interfaceName = interfaceEntity.interfaceName;
   let interfaceBody = '';
   const interfaceElementSet = new Set<string>();
@@ -40,14 +45,15 @@ export function generateInterfaceDeclaration(rootName: string, interfaceEntity: 
 
   if (interfaceEntity.interfacePropertySignatures.length > 0) {
     interfaceEntity.interfacePropertySignatures.forEach(value => {
-      interfaceBody += generatePropertySignatureDeclaration(interfaceName, value, sourceFile) + '\n';
+      interfaceBody += generatePropertySignatureDeclaration(interfaceName, value, sourceFile, mockApi) + '\n';
       interfaceElementSet.add(value.propertyName);
+      addExtraImport(extraImport, importDeclarations, sourceFile, value);
     });
   }
 
   if (interfaceEntity.interfaceMethodSignature.size > 0) {
     interfaceEntity.interfaceMethodSignature.forEach(value => {
-      interfaceBody += generateCommonMethodSignature(interfaceName, value, sourceFile) + '\n';
+      interfaceBody += generateCommonMethodSignature(interfaceName, value, sourceFile, mockApi) + '\n';
       interfaceElementSet.add(value[0].functionName);
     });
   }
@@ -63,7 +69,7 @@ export function generateInterfaceDeclaration(rootName: string, interfaceEntity: 
     interfaceEntity.heritageClauses.forEach(value => {
       currentSourceInterfaceArray.forEach(currentInterface => {
         if (value.types.includes(currentInterface.interfaceName)) {
-          interfaceBody += generateHeritageInterface(currentInterface, sourceFile, interfaceElementSet);
+          interfaceBody += generateHeritageInterface(currentInterface, sourceFile, interfaceElementSet, mockApi);
         }
       });
     });
@@ -73,13 +79,13 @@ export function generateInterfaceDeclaration(rootName: string, interfaceEntity: 
   return interfaceBody;
 }
 
-function generateHeritageInterface(interfaceEntity: InterfaceEntity, sourceFile: SourceFile, elements: Set<string>): string {
+function generateHeritageInterface(interfaceEntity: InterfaceEntity, sourceFile: SourceFile, elements: Set<string>, mockApi: string): string {
   const interfaceName = interfaceEntity.interfaceName;
   let interfaceBody = '';
   if (interfaceEntity.interfacePropertySignatures.length > 0) {
     interfaceEntity.interfacePropertySignatures.forEach(value => {
       if (!elements.has(value.propertyName)) {
-        interfaceBody += generatePropertySignatureDeclaration(interfaceName, value, sourceFile) + '\n';
+        interfaceBody += generatePropertySignatureDeclaration(interfaceName, value, sourceFile, mockApi) + '\n';
       }
     });
   }
@@ -87,7 +93,7 @@ function generateHeritageInterface(interfaceEntity: InterfaceEntity, sourceFile:
   if (interfaceEntity.interfaceMethodSignature.size > 0) {
     interfaceEntity.interfaceMethodSignature.forEach(value => {
       if (!elements.has(value[0].functionName)) {
-        interfaceBody += generateCommonMethodSignature(interfaceName, value, sourceFile) + '\n';
+        interfaceBody += generateCommonMethodSignature(interfaceName, value, sourceFile, mockApi) + '\n';
       }
     });
   }
@@ -100,4 +106,66 @@ function generateHeritageInterface(interfaceEntity: InterfaceEntity, sourceFile:
     });
   }
   return interfaceBody;
+}
+
+/**
+ * 
+ * @param extraImport 
+ * @param importDeclarations 
+ * @param sourceFile 
+ * @param value 
+ * @returns 
+ */
+function addExtraImport(
+  extraImport: string[],
+  importDeclarations: ImportElementEntity[],
+  sourceFile: SourceFile,
+  value: PropertySignatureEntity): void {
+  if (extraImport && importDeclarations) {
+    const propertyTypeName = value.propertyTypeName.split('.')[0].split('|')[0].split('&')[0].replace(/"'/g, '').trim();
+    if (propertyTypeName.includes('/')) {
+      return;
+    }
+    if (hasBeenImported(importDeclarations, propertyTypeName)) {
+      return;
+    }
+    const specialFilesList = [...specialFiles.map(specialFile=>path.join(getApiInputPath(), ...specialFile.split('/')))];
+    if (!specialFilesList.includes(sourceFile.fileName)) {
+      specialFilesList.unshift(sourceFile.fileName);
+    }
+    for (let i = 0; i < specialFilesList.length; i++) {
+      const specialFilePath = specialFilesList[i];
+      const specialFileContent = fs.readFileSync(specialFilePath, 'utf-8');
+      const regex = new RegExp(`\\s${propertyTypeName}\\s({|=|extends)`);
+      const results = specialFileContent.match(regex);
+      if (!results) {
+        continue;
+      }
+      if (sourceFile.fileName === specialFilePath) {
+        return;
+      }
+      let specialFileRelatePath = path.relative(path.dirname(sourceFile.fileName), path.dirname(specialFilePath));
+      if (!specialFileRelatePath.startsWith('./') && !specialFileRelatePath.startsWith('../')) {
+        specialFileRelatePath = './' + specialFileRelatePath;
+      }
+      if (!dtsFileList.includes(specialFilePath)) {
+        dtsFileList.push(specialFilePath);
+      }
+      specialFileRelatePath = specialFileRelatePath.split(path.sep).join('/');
+      const importStr = `import {${propertyTypeName}} from '${
+        specialFileRelatePath}${
+        specialFileRelatePath.endsWith('/') ? '' : '/'}${
+        path.basename(specialFilePath).replace('.d.ts', '').replace('.d.ets', '')}'\n`;
+      if (extraImport.includes(importStr)) {
+        return;
+      }
+      extraImport.push(importStr);
+      return;
+    }
+    if (propertyTypeName.includes('<') || propertyTypeName.includes('[')) {
+      return;
+    }
+    console.log(sourceFile.fileName, 'propertyTypeName', propertyTypeName);
+    return;
+  }
 }
