@@ -16,6 +16,7 @@
 import fs from 'fs';
 import path from 'path';
 import type { SourceFile } from 'typescript';
+import { SyntaxKind } from 'typescript';
 import type { InterfaceEntity } from '../declaration-node/interfaceDeclaration';
 import { generateCommonMethodSignature } from './generateCommonMethodSignature';
 import { generateIndexSignature } from './generateIndexSignature';
@@ -75,7 +76,10 @@ export function generateInterfaceDeclaration(rootName: string, interfaceEntity: 
     });
   }
 
-  interfaceBody += '}';
+  interfaceBody += '}\n';
+  if (interfaceEntity.exportModifiers.includes(SyntaxKind.DeclareKeyword)) {
+    interfaceBody += `global.${interfaceName} = ${interfaceName};\n`;
+  }
   return interfaceBody;
 }
 
