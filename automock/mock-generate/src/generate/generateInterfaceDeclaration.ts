@@ -16,6 +16,7 @@
 import fs from 'fs';
 import path from 'path';
 import type { SourceFile } from 'typescript';
+import { SyntaxKind } from 'typescript';
 import type { InterfaceEntity } from '../declaration-node/interfaceDeclaration';
 import { generateCommonMethodSignature } from './generateCommonMethodSignature';
 import { generateIndexSignature } from './generateIndexSignature';
@@ -75,7 +76,14 @@ export function generateInterfaceDeclaration(rootName: string, interfaceEntity: 
     });
   }
 
-  interfaceBody += '}';
+  interfaceBody += '}\n';
+  if (interfaceEntity.exportModifiers.includes(SyntaxKind.DeclareKeyword)) {
+    interfaceBody += `
+    if (!global.${interfaceName}) {
+      global.${interfaceName} = ${interfaceName};\n
+    }
+    `;
+  }
   return interfaceBody;
 }
 
@@ -109,12 +117,12 @@ function generateHeritageInterface(interfaceEntity: InterfaceEntity, sourceFile:
 }
 
 /**
- * 
- * @param extraImport 
- * @param importDeclarations 
- * @param sourceFile 
- * @param value 
- * @returns 
+ *
+ * @param extraImport
+ * @param importDeclarations
+ * @param sourceFile
+ * @param value
+ * @returns
  */
 function addExtraImport(
   extraImport: string[],
@@ -129,7 +137,7 @@ function addExtraImport(
     if (hasBeenImported(importDeclarations, propertyTypeName)) {
       return;
     }
-    const specialFilesList = [...specialFiles.map(specialFile=>path.join(getApiInputPath(), ...specialFile.split('/')))];
+    const specialFilesList = [...specialFiles.map(specialFile => path.join(getApiInputPath(), ...specialFile.split('/')))];
     if (!specialFilesList.includes(sourceFile.fileName)) {
       specialFilesList.unshift(sourceFile.fileName);
     }
