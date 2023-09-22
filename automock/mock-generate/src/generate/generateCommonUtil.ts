@@ -301,7 +301,7 @@ const paramsTypeStart = {
   'Array': '[]',
   'Object': '{}',
   '{': '{}',
-  'string': '',
+  'string': '""',
   'number': 0,
   'boolean': false
 };
@@ -321,6 +321,9 @@ const removeCallback = (str: string) => {
     const matchValue = str.match(reg);
     callbackParams.value = matchValue ? matchValue[1] : '';
     callbackParams.type = 'AsyncCallback';
+  }
+  if (callbackParams.value.includes(',')) {
+    callbackParams.value = callbackParams.value.split(',')[0];
   }
   return callbackParams;
 };
@@ -354,53 +357,78 @@ const hasDotFirstWord = (str: string) => {
 };
 
 /**
+ * get callback parameters data
+ * @returns data: parameters data: type: AsyncCallback or Callback
+ */
+const setCallbackData = (mockApi: string, paramTypeString: string): {data: string, type: string} => {
+  const callbackParams = removeCallback(paramTypeString);
+  let callbackData = '';
+  let importType = '';
+  if (callbackParams.value) {
+    importType = isInImportType(mockApi, callbackParams.value);
+  }
+  if (importType === 'isHasDotImportMock') {
+    const upperWord = firstLetterWord(callbackParams.value); // Image.PixelMap
+    const firstWord = hasDotFirstWord(upperWord); // Image
+    callbackData = `mock${firstWord}()${upperWord.slice(firstWord.length)}`;
+  } else if (importType === 'isNoHasDotImportMock') {
+    callbackData = callbackParams.value;
+  } else if (importType === 'isImportMock') {
+    callbackData = `mock${firstLetterWord(callbackParams.value)}()`;
+  } else if (importType === 'isImport') {
+    callbackData = callbackParams.value;
+  } else if (importType === 'noImport') {
+    let paramsTypeNoHas = true;
+    if (callbackParams.value.endsWith(']')) {
+      callbackData = '[]';
+    } else {
+      Object.keys(paramsTypeStart).forEach(item => {
+        if (callbackParams.value.startsWith(item)) {
+          callbackData = paramsTypeStart[item];
+          paramsTypeNoHas = false;
+        }
+      });
+      if (paramsTypeNoHas) {
+        callbackData = callbackParams.value;
+      }
+      if (callbackParams.value === 'Date') {
+        callbackData = 'new Date()';
+      }
+      if (callbackParams.value === 'Uint8Array') {
+        callbackData = 'new Uint8Array()';
+      }
+      if (callbackParams.value === 'T') {
+        callbackData = '[PC Preview] unknown type';
+      }
+    }
+  } else {
+    callbackData = '[PC Preview] unknown type';
+  }
+  return {
+    data: callbackData,
+    type: callbackParams.type
+  };
+};
+
+/**
  * get callback statement
- * @returns image.PixelMap  mockImage.PixelMap  mockImage
+ * @returns callback statement
  */
 export function getCallbackStatement(mockApi: string, paramTypeString?: string): string {
   let outPut = `if (args && typeof args[args.length - 1] === 'function') {
     args[args.length - 1].call(this,`;
   const callbackError = "{'code': '','data': '','name': '','message': '','stack': ''}";
-  let callbackData = '';
+  let callbackDataParams = {
+    type: '',
+    data: '[PC Preview] unknown type'
+  };
   if (paramTypeString) {
-    const callbackParams = removeCallback(paramTypeString);
-    let importType = '';
-    if (callbackParams.value) {
-      importType = isInImportType(mockApi, callbackParams.value);
-    }
-    if (importType === 'isHasDotImportMock') {
-      const upperWord = firstLetterWord(callbackParams.value); // Image.PixelMap
-      const firstWord = hasDotFirstWord(upperWord); // Image
-      callbackData = `mock${firstWord}()${upperWord.slice(firstWord.length)}`;
-    } else if (importType === 'isNoHasDotImportMock') {
-      callbackData = callbackParams.value;
-    } else if (importType === 'isImportMock') {
-      callbackData = `mock${firstLetterWord(callbackParams.value)}()`;
-    } else if (importType === 'isImport') {
-      callbackData = callbackParams.value;
-    } else if (importType === 'noImport') {
-      let paramsTypeNoHas = true;
-      if (callbackParams.value.endsWith(']')) {
-        callbackData = '[]';
-      } else {
-        Object.keys(paramsTypeStart).forEach(item => {
-          if (callbackParams.value.startsWith(item)) {
-            callbackData = paramsTypeStart[item];
-            paramsTypeNoHas = false;
-          }
-        });
-        if (paramsTypeNoHas) {
-          callbackData = callbackParams.value;
-        }
-      }
-    } else {
-      callbackData = '[PC Preview] unknown type';
-    }
-    if (callbackParams.type === 'AsyncCallback') {
-      outPut += ` ${callbackError},`;
-    }
+    callbackDataParams = setCallbackData(mockApi, paramTypeString);
   }
-  outPut += callbackData === '[PC Preview] unknown type' ? ` '${callbackData}');\n}` : ` ${callbackData});\n}`;
+  if (callbackDataParams?.type === 'AsyncCallback') {
+    outPut += ` ${callbackError},`;
+  }
+  outPut += callbackDataParams.data === '[PC Preview] unknown type' ? ` '${callbackDataParams.data}');\n}` : ` ${callbackDataParams.data});\n}`;
   return outPut;
 }
 
