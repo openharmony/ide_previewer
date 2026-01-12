@@ -587,13 +587,13 @@ function handleMethodSignature(
   }
   const methodName = handlePropertyNameNode(node.name, mockBuffer, members, parent, type);
   for (let i = 0; i < node.parameters.length; i++) {
-    node.parameters.forEach(_ => handleParameterDeclaration(
+    handleParameterDeclaration(
       node.parameters[i],
       mockBuffer,
       methodName.methodParams,
       methodName,
       KeyValueTypes.REFERENCE
-    ));
+    );
   }
   node.typeParameters?.forEach(parameter => {
     handleTypeParameterDeclaration(parameter, mockBuffer, methodName.typeParameters, methodName, KeyValueTypes.VALUE);
