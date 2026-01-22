@@ -1719,6 +1719,11 @@ function handleExpression(
       operateElements.push(keyValue);
       break;
     }
+    case SyntaxKind.ObjectLiteralExpression: {
+      keyValue = handleObjectLiteralExpression(node as ts.ObjectLiteralExpression, members, parent);
+      operateElements.push(keyValue);
+      break;
+    }
     case SyntaxKind.EmptyStatement:
     case SyntaxKind.Block:
     case SyntaxKind.SemicolonClassElement:
@@ -1889,4 +1894,14 @@ function handleFalseKeyword(
   const keyValue = generateKeyValue('false', KeyValueTypes.VALUE, parent);
   members['\'false\''] = keyValue;
   return keyValue;
+}
+
+function handleObjectLiteralExpression(
+  node: ts.ObjectLiteralExpression,
+  members: Members,
+  parent: KeyValue
+): KeyValue {
+  const text = '{}';
+  members[text] = generateKeyValue(text, KeyValueTypes.VALUE, parent);
+  return members[text];
 }
