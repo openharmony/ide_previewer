@@ -50,7 +50,8 @@ CommandParser::CommandParser()
       componentTestConfig(""),
 #endif // COMPONENT_TEST_ENABLED
       staticCard(false),
-      sid("")
+      sid(""),
+      srmPath("")
 {
     Register("-j", 1, "Launch the js app in <directory>.");
     Register("-n", 1, "Set the js app name show on <window title>.");
@@ -97,6 +98,7 @@ CommandParser::CommandParser()
 #endif // COMPONENT_TEST_ENABLED
     Register("-sid", 1, "Set sid for websocket");
     Register("-ilt", 1, "Set enable file opertaion for mock");
+    Register("-srmPath", 1, "Set system route path");
 }
 
 CommandParser& CommandParser::GetInstance()
@@ -138,7 +140,7 @@ bool CommandParser::IsCommandValid()
     partRet = partRet && IsFoldableValid() && IsFoldStatusValid() && IsFoldResolutionValid();
     partRet = partRet && IsAbilityNameValid() && IsLanguageValid() && IsTracePipeNameValid();
     partRet = partRet && IsLocalSocketNameValid() && IsConfigChangesValid() && IsScreenDensityValid();
-    partRet = partRet && IsSidValid() && EnableFileOperationValid();
+    partRet = partRet && IsSidValid() && EnableFileOperationValid() && IsSrmPathValid();
     if (partRet) {
         return true;
     }
@@ -1063,6 +1065,7 @@ void CommandParser::GetCommandInfo(CommandInfo& info) const
     info.compressionResolutionWidth = GetCompressionResolutionWidth();
     info.compressionResolutionHeight = GetCompressionResolutionHeight();
     info.enableFileOperation = EnableFileOperation();
+    info.srmPath = GetSrmPath();
 }
 
 void CommandParser::GetFoldInfo(FoldInfo& info) const
@@ -1098,5 +1101,25 @@ bool CommandParser::IsSidValid()
         return false;
     }
     sid = value;
+    return true;
+}
+
+std::string CommandParser::GetSrmPath() const
+{
+    return srmPath;
+}
+
+bool CommandParser::IsSrmPathValid()
+{
+    if (!IsSet("srmPath")) {
+        return true;
+    }
+    std::string path = Value("srmPath");
+    if (!FileSystem::IsFileExists(path)) {
+        errorInfo = std::string("The configuration router map file does not exist.");
+        ELOG("Launch -srmPath parameters abnormal!");
+        return false;
+    }
+    srmPath = path;
     return true;
 }
