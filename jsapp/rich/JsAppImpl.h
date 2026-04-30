@@ -47,6 +47,7 @@ namespace AbilityRuntime {
 }
 namespace AppExecFwk {
     class Configuration;
+    struct RouterItem;
 }
 #endif
 }
