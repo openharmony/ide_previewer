@@ -342,6 +342,29 @@ void JsAppImpl::SetSimulatorParams(OHOS::AbilityRuntime::Options& options)
         hspInfo.moduleJsonBuffer = std::move(info.moduleJsonBuffer);
         options.dependencyHspInfos.push_back(hspInfo);
     }
+    if (!FileSystem::IsFileExists(commandInfo.srmPath)) {
+        auto srmInfo = OHOS::Ide::StageContext::GetInstance().GetRouterMap(commandInfo.srmPath);
+        for (const auto &srm : srmInfo) {
+            OHOS::AppExecFwk::RouterItem routerItem;
+            routerItem.name = srm.name;
+            routerItem.pageSourceFile = srm.pageSourceFile;
+            routerItem.buildFunction = srm.buildFunction;
+            routerItem.ohmurl = srm.ohmurl;
+            routerItem.bundleName = srm.bundleName;
+            routerItem.moduleName = srm.moduleName;
+            for (const auto &pair : srm.data) {
+                routerItem.data[pair.first] = pair.second;
+                ILOG("Router key:%s ,value:%s", pair.first.c_str(), pair.second.c_str());
+            }
+            options.hapModuleInfo.routerArray.push_back(routerItem);
+            ILOG("Router name:%s", routerItem.name.c_str());
+            ILOG("Router pageSourceFile:%s", routerItem.pageSourceFile.c_str());
+            ILOG("Router buildFunction:%s", routerItem.buildFunction.c_str());
+            ILOG("Router ohmurl:%s", routerItem.ohmurl.c_str());
+            ILOG("Router bundleName:%s", routerItem.bundleName.c_str());
+            ILOG("Router moduleName:%s", routerItem.moduleName.c_str());
+        }
+    }
     SetSimulatorCommonParams(options);
 }
 
@@ -407,7 +430,6 @@ std::shared_ptr<AppExecFwk::Configuration> JsAppImpl::UpdateConfiguration(OHOS::
     configuration->AddItem(OHOS::AppExecFwk::ConfigurationInner::APPLICATION_DENSITYDPI, density);
     return configuration;
 }
-
 
 void JsAppImpl::SetWindowParams() const
 {

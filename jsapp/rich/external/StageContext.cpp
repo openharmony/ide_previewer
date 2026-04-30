@@ -772,4 +772,59 @@ bool StageContext::GetCloudModuleInfo(const std::string& packageName, HspInfo& h
     }
     return true;
 }
+
+std::vector<RouterItem> StageContext::GetRouterMap(const std::string& inputPath)
+{
+    std::vector<RouterItem> routerItems;
+    if (!FileSystem::IsFileExists(inputPath)) {
+        ELOG("The router map file is not exist.");
+        return routerItems;
+    }
+
+    std::string jsonStr = JsonReader::ReadFile(inputPath);
+    Json2::Value rootJson = JsonReader::ParseJsonData2(jsonStr);
+    if (rootJson.IsNull() || !rootJson.IsValid()) {
+        ELOG("Get router map content failed.");
+        return routerItems;
+    }
+    // 获取routerMap数组
+    if (!rootJson.IsMember("routerMap") || !rootJson["routerMap"].IsArray()) {
+        ELOG("Don't find some necessary node in loader.json.");
+        return routerItems;
+    }
+    Json2::Value jsonObj = rootJson["routerMap"];
+    int arraySize = rootJson["routerMap"].GetArraySize();
+    for (int i = 0; i < arraySize; i++) {
+        Json2::Value item = jsonObj.GetArrayItem(i);
+        RouterItem routerItem;
+        if (item.IsMember("name") && item["name"].IsString()) {
+            routerItem.name = item["name"].AsString();
+        }
+        if (item.IsMember("pageSourceFile") && item["pageSourceFile"].IsString()) {
+            routerItem.pageSourceFile = item["pageSourceFile"].AsString();
+        }
+        if (item.IsMember("buildFunction") && item["buildFunction"].IsString()) {
+            routerItem.buildFunction = item["buildFunction"].AsString();
+        }
+        if (item.IsMember("ohmurl") && item["ohmurl"].IsString()) {
+            routerItem.ohmurl = item["ohmurl"].AsString();
+        }
+        if (item.IsMember("bundleName") && item["bundleName"].IsString()) {
+            routerItem.bundleName = item["bundleName"].AsString();
+        }
+        if (item.IsMember("moduleName") && item["moduleName"].IsString()) {
+            routerItem.moduleName = item["moduleName"].AsString();
+        }
+        if (item.IsMember("data") && item["data"].IsObject()) {
+            Json2::Value dataOjb = item["data"];
+            for (const auto& key : dataOjb.GetMemberNames()) {
+                if (dataOjb[key].IsString()) {
+                    routerItem.data[key] = dataOjb[key].AsString();
+                }
+            }
+        }
+        routerItems.push_back(routerItem);
+    }
+    return routerItems;
+}
 }
