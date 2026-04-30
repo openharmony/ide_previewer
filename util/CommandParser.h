@@ -34,6 +34,7 @@ public:
     std::string abilityName;
     std::string configPath;
     std::string screenShape;
+    std::string srmPath;
     int32_t orignalResolutionWidth;
     int32_t orignalResolutionHeight;
     int32_t compressionResolutionWidth;
@@ -101,6 +102,7 @@ public:
     std::string GetComponentTestConfig() const;
 #endif // COMPONENT_TEST_ENABLED
     std::string GetSid() const;
+    std::string GetSrmPath() const;
 
 private:
     CommandParser();
@@ -168,6 +170,7 @@ private:
     int32_t foldResolutionHeight;
     std::string loaderJsonPath;
     std::string sid;
+    std::string srmPath;
 
     bool IsDebugPortValid();
     bool IsAppPathValid();
@@ -208,6 +211,7 @@ private:
     bool IsFoldResolutionValid();
     bool IsLoaderJsonPathValid();
     bool IsSidValid();
+    bool IsSrmPathValid();
     std::string HelpText();
     void ProcessingCommand(const std::vector<std::string>& strs);
 };
