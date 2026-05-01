@@ -342,7 +342,7 @@ void JsAppImpl::SetSimulatorParams(OHOS::AbilityRuntime::Options& options)
         hspInfo.moduleJsonBuffer = std::move(info.moduleJsonBuffer);
         options.dependencyHspInfos.push_back(hspInfo);
     }
-    if (!FileSystem::IsFileExists(commandInfo.srmPath)) {
+    if (FileSystem::IsFileExists(commandInfo.srmPath)) {
         auto srmInfo = OHOS::Ide::StageContext::GetInstance().GetRouterMap(commandInfo.srmPath);
         for (const auto &srm : srmInfo) {
             OHOS::AppExecFwk::RouterItem routerItem;
