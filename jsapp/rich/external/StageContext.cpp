@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include "StageContext.h"
+#include "parse_hsp_version_int.h"
 #include <sstream>
 #include <fstream>
 #include <cctype>
@@ -266,7 +267,12 @@ std::vector<int> StageContext::SplitHspVersion(const std::string& version)
     std::istringstream iss(version);
     std::string segment;
     while (getline(iss, segment, '.')) {
-        segments.push_back(std::stoi(segment));
+        int value = 0;
+        if (!ParseHspVersionInt(segment, value)) {
+            ELOG("invalid HSP version segment: %s", segment.c_str());
+            return {};
+        }
+        segments.push_back(value);
     }
     return segments;
 }
